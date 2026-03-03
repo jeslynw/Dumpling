@@ -60,7 +60,7 @@ SmartNotebook solves this by:
 
 **Inside the frontend folder, install Tiptap**: ```npx @tiptap/cli@latest add simple-editor```
 
-**Add the following imports in `./src/app`**:
+**Add the following imports in `./src/app/global.css`**:
 - @import '../styles/_variables.scss';
 - @import '../styles/_keyframe-animations.scss';
 
