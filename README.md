@@ -1,22 +1,21 @@
-# 📓 SmartNotebook
+# 📓 SmartNotebook (To be updated)
 
 > An AI-powered smart notebook that automatically organizes messy text and images into structured, searchable knowledge.
 
-SmartNotebook transforms unstructured content, such as screenshots, handwritten notes, lecture slides, random text into clean, categorized, summarized, and searchable notes using **Agentic AI + LLMs + Retrieval-Augmented Generation (RAG)**.
+SmartNotebook addresses the problem of unstructured content using **Agentic AI + LLMs + Retrieval-Augmented Generation (RAG)**.
 
 ---
 
 ## 🚀 Overview
 
-Problem with digital notes today are:
-- Not structure, messy and scattered across topics
-- Poorly categorized
-- Hard to search later
-- Time consuming to organize
+Current notes and content suffer from:
+- Unstructured, messy, and scattered across topics  
+- Poorly categorized  
+- Hard to find or search  
+- Time-consuming to organize and review  
 
 SmartNotebook solves this by:
-
-- 📷 Extracting text from images (OCR / image captioning)
+- 📷 Extracting text from images
 - 📝 Summarizing long content
 - 🗂 Automatically categorizing notes
 - 🧠 Storing notes with semantic memory
@@ -33,9 +32,11 @@ Instead of a fixed pipeline, an AI agent decides:
 - In what order
 - Whether retrieval (RAG) is needed
 
+---
+
 ### 🔁 High-Level Workflow
 
-
+---
 
 ## 🏗 Tech Stack
 
@@ -43,17 +44,16 @@ Instead of a fixed pipeline, an AI agent decides:
 - Next.js
 - Tiptap Editor
 
-### Backend  (To be updated)
+### Backend
 - Python 3.13
 - FastAPI
-- Vector Database
+- Vector Database (Qdrant)
 
 ### AI Components
-- OCR (doctr / Tesseract)
-- Image Captioning Model
-- LLM for Summarization & Reasoning
-- Embedding Model
-- Retrieval-Augmented Generation (RAG)
+- **Multimodal LLM** - summarizes and classifies images and links  
+- **Retrieval-Augmented Generation (RAG)**
+
+### Web Scraping
 
 ---
 
@@ -71,7 +71,6 @@ Inside the frontend folder, add Tiptap:
 
 Start frontend: ```npm run dev```
 
-```
 
 ### 2. Backend Setup
 
