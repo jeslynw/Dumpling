@@ -25,16 +25,9 @@ SmartNotebook solves this by:
 
 ## 🧠 How It Works
 
-SmartNotebook uses an **Agentic AI architecture**.
-
-Instead of a fixed pipeline, an AI agent decides:
-- Which tools to use
-- In what order
-- Whether retrieval (RAG) is needed
-
 ---
 
-### 🔁 High-Level Workflow
+## 🔁 High-Level Workflow
 
 ---
 
@@ -63,24 +56,27 @@ Instead of a fixed pipeline, an AI agent decides:
 
 ### 1. Frontend Setup
 
-Install Next.js: ```npx create-next-app frontend```
+**Install Next.js**: ```npx create-next-app frontend```
 
-Inside the frontend folder, add Tiptap:
-1. cd frontend
-2. ```npx @tiptap/cli@latest add simple-editor```
+**Inside the frontend folder, install Tiptap**: ```npx @tiptap/cli@latest add simple-editor```
 
-Start frontend: ```npm run dev```
+**Add the following imports in `./src/app`**:
+- @import '../styles/_variables.scss';
+- @import '../styles/_keyframe-animations.scss';
+
+
+**Start frontend**: ```npm run dev```
 
 
 ### 2. Backend Setup
 
 #### Environment Setup
-Create env: ```conda create -p ./env python=3.13 -y```
+- **Create env**: ```conda create -p ./env python=3.13 -y```
 
-Activate env: ```conda activate ./env```
+- **Activate env**: ```conda activate ./env```
 
-Install dependencies: ```pip install -r requirements.txt```
+- **Install dependencies**: ```pip install -r requirements.txt```
 
-Run backend: ``` ```
+**Run backend**: ``` ```
 
 
