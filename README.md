@@ -38,7 +38,7 @@ SmartNotebook solves this by:
 - Tiptap Editor
 
 ### Backend
-- Python 3.13
+- Python 3.13.5
 - FastAPI
 - Vector Database (Qdrant)
 
@@ -71,7 +71,7 @@ SmartNotebook solves this by:
 ### 2. Backend Setup
 
 #### Environment Setup
-- **Create env**: ```conda create -p ./env python=3.13 -y```
+- **Create env**: ```conda create -p ./env python=3.13.5 -y```
 
 - **Activate env**: ```conda activate ./env```
 
