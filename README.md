@@ -1,6 +1,4 @@
-# SmartNotebook
-
-# 🧠 SmartNotebook
+# 📓 SmartNotebook
 
 > An AI-powered smart notebook that automatically organizes messy text and images into structured, searchable knowledge.
 
