@@ -1,7 +1,13 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Sidebar from "@/components/Sidebar";
+import Homepage from "./Homepage";
+
+export default function page() {
   return (
-    <h1>Hello There</h1>
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <Homepage />
+    </div>
   );
 }
