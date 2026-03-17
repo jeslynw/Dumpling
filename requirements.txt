@@ -29,3 +29,47 @@ tornado==6.5.2
 traitlets==5.14.3
 wcwidth==0.2.13
 wheel==0.46.3
+
+# Web framework
+fastapi
+uvicorn[standard]
+python-multipart # for file upload endpoints
+
+# Config
+python-dotenv
+
+# Database
+sqlalchemy
+
+# LangChain ecosystem
+langchain
+langchain-core
+langchain-openai
+langchain-community
+langgraph
+
+# Vector DB
+qdrant-client
+
+# Hybrid retrieval
+rank_bm25                 # required by LangChain's BM25Retriever
+sentence-transformers     # required by HuggingFaceCrossEncoder reranker
+
+# Web search fallback (CRAG Tavily)
+tavily-python
+
+# Document parsing
+beautifulsoup4
+requests
+pypdf
+python-docx
+
+# Evaluation
+ragas
+datasets
+
+# Testing
+pytest
+
+# Docling
+docling
