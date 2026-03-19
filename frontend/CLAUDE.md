@@ -53,7 +53,7 @@ frontend/
 │   │   ├── notes/
 │   │   │   ├── new/page.tsx   # Route "/notes/new" — New note editor (Client Component)
 │   │   │   └── [id]/page.tsx  # Route "/notes/[id]" — Edit note editor (Client Component)
-│   │   ├── chat/page.tsx      # Route "/chat" — Ask Dumpling AI (Client Component)
+│   │   ├── chat/page.tsx      # Route "/chat" — Chat with Bao (Client Component)
 │   │   └── trash/page.tsx     # Route "/trash" — Trash (Client Component)
 │   ├── components/
 │   │   ├── editor/            # Note editor and related UI
@@ -139,7 +139,7 @@ Client Component.
 
 ---
 
-### `src/app/chat/page.tsx` — Ask Dumpling AI (`/chat`)
+### `src/app/chat/page.tsx` — Chat with Bao (`/chat`)
 Client Component, split into two parts:
 
 **`GlobalChat`** (inner):
@@ -187,7 +187,7 @@ Client Component. The top-level layout frame for every page.
 Client Component. Left navigation panel.
 
 **Key features:**
-- Links to Home (`/`), Trash (`/trash`), and **Ask Dumpling AI** (`/chat`, `forum` icon).
+- Links to Home (`/`), Trash (`/trash`), and **Chat with Bao** (`/chat`, `forum` icon).
 - Fetches the notes list via `getNotes()` on mount.
 - Shows skeleton loading state (3 shimmer blocks) while loading.
 - Each note row shows title (or "Untitled"), relative time, and a hover-reveal delete button.

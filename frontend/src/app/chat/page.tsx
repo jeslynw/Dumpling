@@ -76,7 +76,7 @@ function GlobalChat() {
               className="text-lg text-slate-800 leading-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Dumpling AI Agent
+              Chat with Bao
             </h1>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-soft" />
