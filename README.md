@@ -28,7 +28,7 @@ SmartNotebook solves this by:
 - **Content Ingestion** — Paste text, upload PDFs/images/URLs, or use the homepage hero input. Files are processed by the Ingestion Agent, which extracts text and metadata.
 - **AI Categorisation** — The Categorisation Agent automatically assigns tags and categories to each note using an LLM, keeping your knowledge base organised without manual effort.
 - **Semantic Search** — Notes and attachments are embedded into a vector database (Qdrant). The RAG pipeline retrieves the most relevant chunks to answer your questions accurately.
-- **Ask Dumpling AI (Global Chat)** — The `/chat` page lets you ask anything across your entire knowledge base. The AI searches all notes and returns an answer with source references.
+- **Chat with Bao (Global Chat)** — The `/chat` page lets you ask anything across your entire knowledge base. The AI searches all notes and returns an answer with source references.
 - **Note-Scoped Chat** — Inside any note editor, the floating "Chat with Bao" panel lets you query just that note's content using the same RAG backend, scoped by `context_note_ids`.
 
 ---

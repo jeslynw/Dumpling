@@ -82,8 +82,8 @@ export default function Sidebar({ open, activeNoteId }: SidebarProps) {
       {/* Fixed nav: Home + Trash */}
       <div className="px-3 pt-3 pb-2 flex-shrink-0 space-y-0.5">
         <NavLink href="/" icon="home" label="Home" active={isHome} />
+        <NavLink href="/chat" icon="forum" label="Chat with Bao" active={isChat} />
         <NavLink href="/trash" icon="delete_outline" label="Trash" active={isTrash} />
-        <NavLink href="/chat" icon="forum" label="Ask Dumpling AI" active={isChat} />
       </div>
 
       {/* Notes section header */}

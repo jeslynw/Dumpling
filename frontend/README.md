@@ -71,7 +71,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 src/
 ├── app/
 │   ├── page.tsx           Route "/" — Homepage
-│   ├── chat/page.tsx      Route "/chat" — Ask Dumpling AI
+│   ├── chat/page.tsx      Route "/chat" — Chat with Bao
 │   ├── notes/
 │   │   ├── new/page.tsx   Route "/notes/new" — New note editor
 │   │   └── [id]/page.tsx  Route "/notes/[id]" — Edit note editor
