@@ -13,3 +13,7 @@ from app.api.dependencies import get_db
 from app.db import crud
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
+
+@router.get("/ping")
+def ping_ingest():
+    return {"ok": True, "module": "ingest"}
