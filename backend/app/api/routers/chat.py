@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.agents.agent_ragchatbot import query
+#from app.agents.agent_ragchatbot import query
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
