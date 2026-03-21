@@ -100,35 +100,6 @@ def get_all_documents_for_bm25(collection_name: str) -> list[Document]:
     
     return all_docs
 
-def search_qdrant(query: str, top_k: int = 5, collection_name: str = "default") -> list[str]:
-    """
-    Semantic search in a single Qdrant collection (folder).
-    """
-    vs = get_vectorstore(collection_name)
-    docs = vs.similarity_search(query, k=top_k)
-    return [doc.page_content for doc in docs]
-
-
-def search_qdrant_with_sources(query: str, top_k: int = 5, collection_name: str = "default") -> list[dict]:
-    """
-    Semantic search in a single Qdrant collection and return text with source metadata.
-    """
-    vs = get_vectorstore(collection_name)
-    docs = vs.similarity_search(query, k=top_k)
-
-    results = []
-    for doc in docs:
-        md = doc.metadata or {}
-        results.append(
-            {
-                "text": doc.page_content,
-                "source": md.get("source") or md.get("filename") or "unknown",
-                "collection": sanitize_name(collection_name),
-            }
-        )
-    return results
-
-
 def _doc_key(doc: Document) -> str:
     md = doc.metadata or {}
     source = md.get("source") or md.get("filename") or md.get("file_id") or "unknown"

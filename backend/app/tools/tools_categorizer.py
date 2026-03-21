@@ -99,7 +99,8 @@ def find_or_suggest_folder(content: str, title: str = "", summary: str = "") -> 
 def get_folder_contents_sample(folder_name: str, limit: int = 3) -> str:
     """Notebook tool: fetch a small sample of chunks from a folder."""
     return _sample_folder_contents(folder_name, limit=limit)
-#checked
+
+
 def update_folder_registry(
     folder_name: str,
     title: str = "",
@@ -108,6 +109,7 @@ def update_folder_registry(
     is_new_folder: bool = False,
     meta_path: str = "backend/data/qdrant_db/meta.json",
 ):
+    """Update folder metadata used by folder selection prompts."""
     meta_file = Path(meta_path)
     data = {}
     if meta_file.exists():
@@ -117,12 +119,17 @@ def update_folder_registry(
     folders = data.get("folders", {})
     if isinstance(folders, list):
         folders = {name: {"description": "", "sources": []} for name in folders}
+    if not isinstance(folders, dict):
+        folders = {}
 
     safe_summary = (summary or "")[:1200]
+    safe_title = (title or "").strip()
+    seed_text = (f"{safe_title}\n{safe_summary}").strip() or folder_name
+
     if is_new_folder or folder_name not in folders:
         desc_prompt = (
             f"Write a concise 2-sentence folder description for '{folder_name}' "
-            f"based on: {safe_summary}"
+            f"based on this content:\n{seed_text}"
         )
         description = (openai_llm.invoke(desc_prompt).content or "").strip()
         folders[folder_name] = {
@@ -134,11 +141,13 @@ def update_folder_registry(
         update_prompt = (
             "Update this folder description to include new content.\n"
             f"Current description: {existing_desc}\n"
-            f"New content summary: {safe_summary}\n"
+            f"New content: {seed_text}\n"
             "Return ONLY updated 2-sentence description."
         )
         folders[folder_name]["description"] = (openai_llm.invoke(update_prompt).content or "").strip()
         srcs = folders[folder_name].get("sources", [])
+        if not isinstance(srcs, list):
+            srcs = []
         if source and source not in srcs:
             srcs.append(source)
         folders[folder_name]["sources"] = srcs

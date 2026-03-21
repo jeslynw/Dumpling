@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from app.agents.agent_ingestion import run_ingestion_agent
 from app.services.qdrant import add_documents
 from app.core.config import CATEGORIZER_CONFIDENCE_THRESHOLD
+from app.tools.tools_categorizer import update_folder_registry
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
@@ -81,6 +82,13 @@ def ingest(payload: IngestRequest):
             # If user explicitly chooses folder, treat it as approval.
             if explicit_folder or not requires_confirmation:
                 add_documents(target_folder, docs)
+                update_folder_registry(
+                    folder_name=target_folder,
+                    title=title,
+                    summary=summary,
+                    source=payload.filename or payload.content[:120],
+                    is_new_folder=bool(categorization.get("is_new_folder", False)),
+                )
                 stored = True
             else:
                 pending_id = _create_pending_item(
@@ -153,6 +161,13 @@ async def ingest_upload(
         if store_to_qdrant and docs:
             if explicit_folder or not requires_confirmation:
                 add_documents(target_folder, docs)
+                update_folder_registry(
+                    folder_name=target_folder,
+                    title=title,
+                    summary=summary,
+                    source=file.filename or temp_path,
+                    is_new_folder=bool(categorization.get("is_new_folder", False)),
+                )
                 stored = True
             else:
                 pending_id = _create_pending_item(
@@ -211,6 +226,14 @@ def confirm_ingest(payload: ConfirmIngestRequest):
 
     if docs:
         add_documents(target_folder, docs)
+        cat = item.get("categorization", {}) or {}
+        update_folder_registry(
+            folder_name=target_folder,
+            title=item.get("title", ""),
+            summary=item.get("summary", ""),
+            source=item.get("source_name", ""),
+            is_new_folder=bool(cat.get("is_new_folder", False)),
+        )
 
     PENDING_INGESTIONS.pop(payload.pending_id, None)
     return {
