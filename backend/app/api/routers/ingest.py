@@ -11,6 +11,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app.agents.agent_ingestion import run_ingestion_agent
+from app.services.qdrant import add_documents
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
@@ -18,6 +19,8 @@ router = APIRouter(prefix="/ingest", tags=["ingest"])
 class IngestRequest(BaseModel):
     content: str
     filename: Optional[str] = ""
+    store_to_qdrant: bool = False
+    folder_name: Optional[str] = "inbox"
 
 
 @router.get("/ping")
@@ -32,6 +35,13 @@ def ingest(payload: IngestRequest):
             raw_content=payload.content,
             filename=payload.filename or "",
         )
+
+        target_folder = payload.folder_name or "inbox"
+        stored = False
+        if payload.store_to_qdrant and docs:
+            add_documents(target_folder, docs)
+            stored = True
+
         return {
             "ok": True,
             "title": title,
@@ -39,6 +49,8 @@ def ingest(payload: IngestRequest):
             "chunk_count": len(docs),
             "input_filename": payload.filename or "",
             "sample_metadata": docs[0].metadata if docs else {},
+            "stored_to_qdrant": stored,
+            "folder_name": target_folder,
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Ingestion failed: {e}")
@@ -48,12 +60,15 @@ def ingest(payload: IngestRequest):
 async def ingest_upload(
     file: UploadFile = File(...),
     note_id: Optional[str] = Form(default=None),
+    store_to_qdrant: bool = Form(default=False),
+    folder_name: Optional[str] = Form(default="inbox"),
 ):
     """
     Prototype upload path:
     1) save uploaded bytes to a temp file
     2) run ingestion on that temp filepath
     """
+    temp_path = ""
     try:
         suffix = Path(file.filename or "").suffix or ".bin"
 
@@ -67,6 +82,12 @@ async def ingest_upload(
             filename=file.filename or "",
         )
 
+        target_folder = folder_name or "inbox"
+        stored = False
+        if store_to_qdrant and docs:
+            add_documents(target_folder, docs)
+            stored = True
+
         return {
             "ok": True,
             "note_id": note_id,
@@ -75,7 +96,9 @@ async def ingest_upload(
             "summary": summary,
             "chunk_count": len(docs),
             "sample_metadata": docs[0].metadata if docs else {},
-            "temp_path": temp_path,  # keep for prototype visibility
+            "stored_to_qdrant": stored,
+            "folder_name": target_folder,
+            "temp_path": temp_path,
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Upload ingestion failed: {e}")

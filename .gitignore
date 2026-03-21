@@ -75,6 +75,12 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# SmartNotebook backend data (SQLite, Qdrant, meta)
+backend/data/notebook.db
+backend/data/qdrant_db/.lock
+backend/data/qdrant_db/meta.json
+storage.sqlite
+
 # Flask stuff:
 instance/
 .webassets-cache
