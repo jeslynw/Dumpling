@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 
 from langchain_core.documents import Document
 
@@ -75,10 +75,10 @@ def _generate_title_and_summary(content: str, source_hint: str = "") -> Tuple[st
     return title, summary
 
 
-def run_ingestion_agent(raw_content: str, filename: str = "") -> Tuple[List[Document], str, str, str, float]:
+def run_ingestion_agent(raw_content: str, filename: str = "") -> Tuple[List[Document], str, str, Dict[str, Any]]:
     """
     Prototype ingestion orchestrator.
-    Returns: (docs, title, summary, suggested_folder, confidence)
+    Returns: (docs, title, summary, categorization)
     """
     input_type = _detect_input_type(raw_content=raw_content, filename=filename)
 
@@ -103,7 +103,15 @@ def run_ingestion_agent(raw_content: str, filename: str = "") -> Tuple[List[Docu
     # --- Categorizer integration ---
     cat_request = CategorizationRequest(content=first_content, meta={"filename": filename})
     cat_result = categorize_note(cat_request)
-    suggested_folder = cat_result.folder_name
-    confidence = cat_result.confidence
+    categorization = {
+        "folder_name": cat_result.folder_name,
+        "is_new_folder": cat_result.is_new_folder,
+        "confidence": cat_result.confidence,
+        "reason": cat_result.reason,
+        "needs_confirmation": cat_result.needs_confirmation,
+        "confidence_band": cat_result.confidence_band,
+        "verification_required": cat_result.verification_required,
+        "action": cat_result.action,
+    }
 
-    return docs, title, summary, suggested_folder, confidence
+    return docs, title, summary, categorization

@@ -12,9 +12,9 @@ from pydantic import BaseModel
 
 from app.agents.agent_ingestion import run_ingestion_agent
 from app.services.qdrant import add_documents
+from app.core.config import CATEGORIZER_CONFIDENCE_THRESHOLD
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
-LOW_CONFIDENCE_THRESHOLD = 0.7
 
 
 class IngestRequest(BaseModel):
@@ -32,10 +32,12 @@ def ping_ingest():
 @router.post("")
 def ingest(payload: IngestRequest):
     try:
-        docs, title, summary, suggested_folder, confidence = run_ingestion_agent(
+        docs, title, summary, categorization = run_ingestion_agent(
             raw_content=payload.content,
             filename=payload.filename or "",
         )
+        suggested_folder = categorization.get("folder_name", "")
+        confidence = float(categorization.get("confidence", 0.0))
 
         explicit_folder = (payload.folder_name or "").strip()
         target_folder = explicit_folder or suggested_folder or "inbox"
@@ -50,7 +52,12 @@ def ingest(payload: IngestRequest):
             "summary": summary,
             "suggested_folder": suggested_folder,
             "confidence": confidence,
-            "needs_user_confirmation": confidence < LOW_CONFIDENCE_THRESHOLD,
+            "needs_user_confirmation": bool(categorization.get("needs_confirmation", confidence <= CATEGORIZER_CONFIDENCE_THRESHOLD)),
+            "confidence_band": categorization.get("confidence_band", "uncertain"),
+            "verification_required": bool(categorization.get("verification_required", False)),
+            "action": categorization.get("action", "ask_user_confirmation"),
+            "is_new_folder": bool(categorization.get("is_new_folder", False)),
+            "reason": categorization.get("reason", ""),
             "chunk_count": len(docs),
             "input_filename": payload.filename or "",
             "sample_metadata": docs[0].metadata if docs else {},
@@ -82,10 +89,12 @@ async def ingest_upload(
             tmp.write(data)
             temp_path = tmp.name
 
-        docs, title, summary, suggested_folder, confidence = run_ingestion_agent(
+        docs, title, summary, categorization = run_ingestion_agent(
             raw_content=temp_path,
             filename=file.filename or "",
         )
+        suggested_folder = categorization.get("folder_name", "")
+        confidence = float(categorization.get("confidence", 0.0))
 
         explicit_folder = (folder_name or "").strip()
         target_folder = explicit_folder or suggested_folder or "inbox"
@@ -102,7 +111,12 @@ async def ingest_upload(
             "summary": summary,
             "suggested_folder": suggested_folder,
             "confidence": confidence,
-            "needs_user_confirmation": confidence < LOW_CONFIDENCE_THRESHOLD,
+            "needs_user_confirmation": bool(categorization.get("needs_confirmation", confidence <= CATEGORIZER_CONFIDENCE_THRESHOLD)),
+            "confidence_band": categorization.get("confidence_band", "uncertain"),
+            "verification_required": bool(categorization.get("verification_required", False)),
+            "action": categorization.get("action", "ask_user_confirmation"),
+            "is_new_folder": bool(categorization.get("is_new_folder", False)),
+            "reason": categorization.get("reason", ""),
             "chunk_count": len(docs),
             "sample_metadata": docs[0].metadata if docs else {},
             "stored_to_qdrant": stored,

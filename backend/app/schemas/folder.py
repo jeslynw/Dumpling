@@ -10,3 +10,7 @@ class CategorizationResult(BaseModel):
     is_new_folder: bool
     confidence: float
     reason: str
+    needs_confirmation: bool = False
+    confidence_band: str = "uncertain"
+    verification_required: bool = False
+    action: str = "ask_user_confirmation"
