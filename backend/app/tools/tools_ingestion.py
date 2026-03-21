@@ -9,6 +9,7 @@ from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.core.config import CHUNK_SIZE, CHUNK_OVERLAP
+from app.core.json_utils import parse_json_response
 from app.services.openai import openai_llm, openai_vision
 
 
@@ -17,37 +18,48 @@ def _sanitize_text(text: str) -> str:
         return ""
     return text.encode("utf-8", errors="ignore").decode("utf-8").replace("\x00", "")
 
-
+#checked
 def generate_document_summary(full_text: str) -> str:
     safe_text = _sanitize_text(full_text[:15000])
     if not safe_text.strip():
         return ""
 
-    prompt = (
-        "You are summarizing a document for retrieval.\n"
-        "Write a concise 3-5 sentence summary of the whole document.\n"
-        "Focus on key topics, entities, and intent.\n\n"
-        f"DOCUMENT:\n{safe_text}"
-    )
+    prompt = f"""
+    Please read the following document and provide a highly condensed, global summary (approx 150-300 words). 
+    Focus on the core subject matter, the main entities (names, places, organizations), and the overall theme.
+    This summary will be used to provide context to isolated chunks of this document, so ensure the main 'Who, What, Where' is clear.
+    
+    <document>
+    {safe_text}
+    </document>
+    """
+
     response = openai_llm.invoke(prompt)
     return (response.content or "").strip()
 
-
+#checked
 def generate_chunk_context(doc_summary: str, chunk_text: str) -> str:
-    safe_summary = _sanitize_text(doc_summary[:4000])
-    safe_chunk = _sanitize_text(chunk_text[:4000])
+    # sanitize: remove null bytes and non-UTF8 chars that corrupt JSON payload
+    safe_doc = doc_summary.encode("utf-8", errors="ignore").decode("utf-8")
+    safe_doc = safe_doc.replace("\x00", "")   # remove null bytes
+    safe_chunk = chunk_text.encode("utf-8", errors="ignore").decode("utf-8")
+    safe_chunk = safe_chunk.replace("\x00", "")
 
     prompt = (
-        "Given a document summary and one chunk from that document, "
-        "write 2-3 sentences of context that help retrieval.\n"
-        "Do not repeat the chunk verbatim.\n\n"
-        f"DOCUMENT SUMMARY:\n{safe_summary}\n\n"
-        f"CHUNK:\n{safe_chunk}"
+        "<summarized document>\n"
+        + safe_doc
+        + "\n</summarized document>\n\n"
+        "Here is the chunk we want to situate within the whole document:\n"
+        "<chunk>\n"
+        + safe_chunk
+        + "\n</chunk>\n\n"
+        "Please give a short context (2-3 sentences) to situate this chunk within the overall document "
+        "for the purposes of improving search retrieval. Answer ONLY with the brief context and nothing else."
     )
     response = openai_llm.invoke(prompt)
     return (response.content or "").strip()
 
-
+#checked
 def chunk_with_context(full_text: str, filename: str = "", input_type: str = "document") -> List[Document]:
     if not full_text or not full_text.strip():
         return []
@@ -77,7 +89,7 @@ def chunk_with_context(full_text: str, filename: str = "", input_type: str = "do
 
     return enriched
 
-
+#checked
 def scrape_and_chunk(url: str) -> List[Document]:
     loader = WebBaseLoader(url)
     docs = loader.load()
@@ -93,7 +105,7 @@ def scrape_and_chunk(url: str) -> List[Document]:
 
     return chunks
 
-
+#checked
 def parse_document(filepath: str) -> List[Document]:
     """
     Docling-based parser for PDF/DOCX/etc.
@@ -119,7 +131,7 @@ def parse_document(filepath: str) -> List[Document]:
         c.metadata["file_id"] = p.name
     return chunks
 
-
+#checked
 def analyze_image(filepath: str) -> List[Document]:
     p = Path(filepath)
     if not p.exists():
@@ -131,13 +143,15 @@ def analyze_image(filepath: str) -> List[Document]:
     with open(p, "rb") as f:
         image_b64 = base64.b64encode(f.read()).decode("utf-8")
 
+    allowed_categories = ["Work", "Finance", "Personal", "Travel", "Food", "Education", "Other"]
     prompt = (
-        "Analyze this image and return STRICT JSON only:\n"
-        "{"
-        "\"summary\": \"max 100 words\", "
-        "\"tags\": [\"tag1\", \"tag2\", \"tag3\"], "
-        "\"category\": \"Work|Finance|Personal|Travel|Food|Education|Other\""
-        "}"
+        "You are a production image classification API. Analyze the image and return STRICT JSON ONLY "
+        "following the JSON format below. No markdown.\n"
+        "Tasks:\n"
+        "1. Provide a concise summary (max 100 words).\n"
+        "2. Generate 3-5 relevant tags.\n"
+        f"3. Assign ONE category from: {allowed_categories}\n\n"
+        "JSON FORMAT: {\"summary\": \"...\", \"tags\": [\"tag1\", \"tag2\"], \"category\": \"category_name\"}"
     )
 
     msg = HumanMessage(
@@ -147,10 +161,18 @@ def analyze_image(filepath: str) -> List[Document]:
         ]
     )
     response = openai_vision.invoke([msg])
-    analysis_text = _sanitize_text(response.content if hasattr(response, "content") else str(response))
+    raw_response = _sanitize_text(response.content if hasattr(response, "content") else str(response))
+    result_dict = parse_json_response(raw_response)
+
+    full_text = (
+        f"Image Filename: {p.name}\n"
+        f"Category: {result_dict.get('category')}\n"
+        f"Tags: {', '.join(result_dict.get('tags', []))}\n"
+        f"Summary: {result_dict.get('summary')}"
+    )
 
     chunks = chunk_with_context(
-        full_text=f"Image filename: {p.name}\nImage analysis:\n{analysis_text}",
+        full_text=full_text,
         filename=p.name,
         input_type="image",
     )
@@ -159,7 +181,7 @@ def analyze_image(filepath: str) -> List[Document]:
         c.metadata["file_id"] = p.name
     return chunks
 
-
+#checked
 def wrap_text(text: str) -> List[Document]:
     safe = _sanitize_text(text)
     if not safe.strip():
