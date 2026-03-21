@@ -4,18 +4,15 @@ POST /chat
 
 The agent_ragchatbot reasons about scope internally based on what's provided.
 """
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
+from app.agents.agent_ragchatbot import run_rag_agent
+from app.schemas.chat import RAGChatRequest, RAGChatResponse
 
-from app.api.dependencies import get_db
-from app.schemas.chat import ChatRequest, ChatResponse
-#from app.agents.agent_ragchatbot import query
+router = APIRouter()
 
-router = APIRouter(prefix="/chat", tags=["chat"])
-
-@router.post("", response_model=ChatResponse)
-def chat(payload: ChatRequest):
-    return ChatResponse(answer="Prototype chat stub", sources=[])
+@router.post("/chat/rag", response_model=RAGChatResponse)
+def chat_rag(request: RAGChatRequest):
+    return run_rag_agent(request)
 
 #@router.post("", response_model=ChatResponse)
 #def chat(payload: ChatRequest, db: Session = Depends(get_db)):
