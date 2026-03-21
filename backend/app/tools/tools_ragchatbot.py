@@ -3,8 +3,31 @@ from pathlib import Path
 from app.services.openai import openai_llm
 from app.services.qdrant import qdrant, sanitize_name, search_hybrid_qdrant_with_sources
 
+
+def _resolve_meta_file(meta_path: str) -> Path:
+    p = Path(meta_path)
+    if p.is_absolute():
+        return p
+
+    repo_root = Path(__file__).resolve().parents[3]
+    backend_root = Path(__file__).resolve().parents[2]
+
+    candidates = [
+        Path.cwd() / p,
+        repo_root / p,
+    ]
+    meta_posix = str(p).replace("\\", "/")
+    if meta_posix.startswith("backend/"):
+        candidates.append(backend_root / meta_posix[len("backend/"):])
+
+    for c in candidates:
+        if c.exists():
+            return c
+
+    return repo_root / p
+
 def load_folder_registry(meta_path: str = "backend/data/qdrant_db/meta.json") -> dict:
-    meta_file = Path(meta_path)
+    meta_file = _resolve_meta_file(meta_path)
     if not meta_file.exists():
         return {}
 

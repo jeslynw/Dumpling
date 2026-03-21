@@ -14,9 +14,33 @@ def _sanitize_folder_name(name: str) -> str:
     # Keep new folder names concise like notebook guidance.
     return "_".join(parts[:2]) if parts else "general"
 
+
+def _resolve_meta_file(meta_path: str) -> Path:
+    p = Path(meta_path)
+    if p.is_absolute():
+        return p
+
+    repo_root = Path(__file__).resolve().parents[3]
+    backend_root = Path(__file__).resolve().parents[2]
+
+    candidates = [
+        Path.cwd() / p,
+        repo_root / p,
+    ]
+    meta_posix = str(p).replace("\\", "/")
+    if meta_posix.startswith("backend/"):
+        candidates.append(backend_root / meta_posix[len("backend/"):])
+
+    for c in candidates:
+        if c.exists():
+            return c
+
+    # Default write target under repository root.
+    return repo_root / p
+
 #checked
 def _load_registry(meta_path: str = "backend/data/qdrant_db/meta.json") -> dict:
-    meta_file = Path(meta_path)
+    meta_file = _resolve_meta_file(meta_path)
     if not meta_file.exists():
         return {}
 
@@ -110,7 +134,7 @@ def update_folder_registry(
     meta_path: str = "backend/data/qdrant_db/meta.json",
 ):
     """Update folder metadata used by folder selection prompts."""
-    meta_file = Path(meta_path)
+    meta_file = _resolve_meta_file(meta_path)
     data = {}
     if meta_file.exists():
         with open(meta_file, "r") as f:
@@ -153,6 +177,7 @@ def update_folder_registry(
         folders[folder_name]["sources"] = srcs
 
     data["folders"] = folders
+    meta_file.parent.mkdir(parents=True, exist_ok=True)
     with open(meta_file, "w") as f:
         json.dump(data, f, indent=2)
 
