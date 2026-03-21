@@ -4,22 +4,24 @@ POST /chat
 
 The agent_ragchatbot reasons about scope internally based on what's provided.
 """
-from fastapi import APIRouter
-from app.agents.agent_ragchatbot import search_rag_across_folders
-from app.schemas.chat import RAGChatRequest, RAGChatResponse
+from fastapi import APIRouter, HTTPException
+from app.agents.agent_ragchatbot import query_notebook
+from app.schemas.schema import ChatRequest, ChatResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/chat", tags=["Chat"])
 
-@router.post("/chat/rag")
-def chat_rag(payload: RAGChatRequest) -> RAGChatResponse:
-    result = search_rag_across_folders(payload.query, payload.top_k)
-    return RAGChatResponse(**result)
+@router.post("", response_model=ChatResponse, summary="Ask the notebook a question")
+def chat(body: ChatRequest):
+    """
+    Runs the RAG chatbot agent:
+      1. pick_relevant_folders  → selects relevant Qdrant collections
+      2. search_folder / search_source  → Hybrid RAG + CRAG retrieval
+      3. LLM synthesises answer, cites sources, flags web-search results
 
-#@router.post("", response_model=ChatResponse)
-#def chat(payload: ChatRequest, db: Session = Depends(get_db)):
-#    result = query(
-#        question=payload.question,
-#        folder_id=payload.folder_id,    # None if not selected
-#        file_id=payload.file_id,        # None if not selected
-#    )
-#    return ChatResponse(answer=result["answer"], sources=result["sources"])
+    If no relevant content is found, CRAG falls back to Tavily web search.
+    """
+    if not body.question.strip():
+        raise HTTPException(status_code=422, detail="Question must not be empty.")
+
+    answer = query_notebook(body.question)
+    return ChatResponse(answer=answer)
