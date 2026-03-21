@@ -58,12 +58,16 @@ def _build_react_executor(tools: list[Any], max_iterations: int = 4):
         PromptTemplate = getattr(prompts_mod, "PromptTemplate")
 
         react_prompt = PromptTemplate.from_template(
-            """You are an ingestion agent for a notebook system.
-Choose tools to extract content based on input type.
-- URL -> scrape_url
-- Document/image local filepath -> parse_document_and_image
-- Plain text -> wrap_text
-Call at least one tool before giving final answer.
+            """You are an ingestion agent for a personal notebook app.
+Your job is to extract clean, readable content from the user's input so it can be stored and searched.
+
+Inspect the content and filename to decide which tool to use:
+- Content starts with http:// or https:// -> scrape_url
+- Filename/path ends in .pdf/.docx/.doc/.pptx/.html/.htm/.md/.txt -> parse_document_and_image
+- Filename/path ends in .png/.jpg/.jpeg/.gif/.webp/.jfif -> parse_document_and_image
+- If it is plain text -> wrap_text
+
+Always use exactly one tool before final answer.
 
 You have access to the following tools:
 {tools}
@@ -206,7 +210,6 @@ def run_ingestion_agent(raw_content: str, filename: str = "") -> Tuple[List[Any]
 def build_ingestion_agent() -> Dict[str, Any]:
     """
     Build a fresh ingestion context with closure tools.
-    This mirrors notebook behavior while preserving backend contracts.
     """
     collected_docs: List[Any] = []
     tool_decorator = _resolve_tool_decorator()
@@ -218,8 +221,8 @@ def build_ingestion_agent() -> Dict[str, Any]:
         collected_docs.extend(chunks)
         if not chunks:
             return ""
-        joined = "\n\n".join(c.page_content for c in chunks)[:8000]
-        return (openai_llm.invoke(f"Summarize in 3-5 sentences:\n\n{joined}").content or "").strip()
+        full_text = "\n\n".join(c.page_content for c in chunks)[:8000]
+        return (openai_llm.invoke(f"Summarize in 3-5 sentences:\n\n{full_text}").content or "").strip()
 
     @tool_decorator("parse_document_and_image")
     def parse_document_and_image_tool(filepath: str) -> str:
@@ -237,8 +240,8 @@ def build_ingestion_agent() -> Dict[str, Any]:
             collected_docs.extend(chunks)
             if not chunks:
                 return f"Could not extract content from '{path.name}'"
-            joined = "\n\n".join(c.page_content for c in chunks)[:8000]
-            return (openai_llm.invoke(f"Summarize in 3-5 sentences:\n\n{joined}").content or "").strip()
+            full_text = "\n\n".join(c.page_content for c in chunks)[:8000]
+            return (openai_llm.invoke(f"Summarize in 3-5 sentences:\n\n{full_text}").content or "").strip()
         except Exception as exc:
             return f"Parsing failed for '{filepath}': {exc}"
 
@@ -249,8 +252,8 @@ def build_ingestion_agent() -> Dict[str, Any]:
         collected_docs.extend(chunks)
         if not chunks:
             return ""
-        joined = "\n\n".join(c.page_content for c in chunks)[:8000]
-        return (openai_llm.invoke(f"Summarize in 3-5 sentences:\n\n{joined}").content or "").strip()
+        full_text = "\n\n".join(c.page_content for c in chunks)[:8000]
+        return (openai_llm.invoke(f"Summarize in 3-5 sentences:\n\n{full_text}").content or "").strip()
 
     tools_list = [scrape_url_tool, parse_document_and_image_tool, wrap_text_tool]
     executor = _build_react_executor(tools_list)

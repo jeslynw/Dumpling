@@ -14,7 +14,7 @@ def _sanitize_folder_name(name: str) -> str:
     # Keep new folder names concise like notebook guidance.
     return "_".join(parts[:2]) if parts else "general"
 
-
+#checked
 def _load_registry(meta_path: str = "backend/data/qdrant_db/meta.json") -> dict:
     meta_file = Path(meta_path)
     if not meta_file.exists():
@@ -99,7 +99,7 @@ def find_or_suggest_folder(content: str, title: str = "", summary: str = "") -> 
 def get_folder_contents_sample(folder_name: str, limit: int = 3) -> str:
     """Notebook tool: fetch a small sample of chunks from a folder."""
     return _sample_folder_contents(folder_name, limit=limit)
-    
+#checked
 def update_folder_registry(
     folder_name: str,
     title: str = "",
