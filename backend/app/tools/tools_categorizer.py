@@ -154,17 +154,29 @@ def _build_folder_prompt(content_preview: str, folder_info: str, exclude_folder:
         if exclude_folder else ""
     )
     return (
-        "You are organizing a personal notebook.\n"
-        "Match by folder DESCRIPTION first, then title.\n"
-        "Only suggest a new folder if no existing folder scores >= 0.5.\n"
-        "New names: lowercase, alphanumeric + underscores, max 2 words.\n\n"
+        "You are organizing a personal notebook. Decide where this item belongs.\n"
+        "IMPORTANT: related topics must go into the same folder family.\n\n"
         f"ITEM:\n{content_preview}\n\n"
         f"EXISTING FOLDERS:\n{folder_info}{exclude_note}\n\n"
+        "RULES:\n"
+        "1. Group by TOPIC or SUBJECT MATTER (not by file format).\n"
+        "2. DO NOT use generic names like weblinks, urls, images, pictures, misc.\n"
+        "3. Match primarily on description, secondarily on title.\n"
+        "4. Avoid near-duplicate folders.\n"
+        "5. Only suggest a new folder if nothing existing scores >= 0.5.\n"
+        "6. New names must be lowercase alphanumeric with underscores only.\n"
+        "7. Prefer broadening an existing folder over creating a near-duplicate.\n"
+        "8. New folder names must be maximum 2 words and must not use prefixes content_, data_, file_, info_.\n\n"
+        "CONFIDENCE GUIDE:\n"
+        "0.9-1.0 = clearly_fits\n"
+        "0.7-0.9 = good_match\n"
+        "0.5-0.7 = uncertain\n"
+        "< 0.5 = suggest_new\n\n"
         "Return ONLY JSON:\n"
         "{\"folder_name\":\"finance\",\"is_new_folder\":false,\"confidence\":0.82,\"reason\":\"...\"}"
     )
 
-
+#checked
 def _sample_folder_contents(folder_name: str, limit: int = 3) -> str:
     safe = sanitize_name(folder_name)
     if not qdrant.collection_exists(safe):
@@ -173,7 +185,6 @@ def _sample_folder_contents(folder_name: str, limit: int = 3) -> str:
         collection_name=safe,
         limit=limit,
         with_payload=True,
-        with_vectors=False,
     )
     snippets = []
     for point in results:

@@ -53,9 +53,29 @@ def _build_react_executor(tools: list, max_iterations: int = 4):
         PromptTemplate = getattr(prompts_mod, "PromptTemplate")
 
         react_prompt = PromptTemplate.from_template(
-            """You are a notebook categorizer.
-Use tools to propose the best folder and verify fit with a sample when needed.
-Return a concise final answer with folder, confidence, and reason.
+                """You are an AI Librarian organizing a personal notebook.
+Your job is to decide which folder a piece of content belongs to.
+
+You will receive input as title, summary, and content preview.
+
+DECISION PROCESS (follow in order):
+1. Call find_or_suggest_folder first using the full input fields (content, title, summary).
+    It returns folder_name, is_new_folder, confidence, reason.
+2. If confidence > 0.7 AND is_new_folder = false:
+    - Call get_folder_contents_sample(folder_name) to verify folder fit.
+    - If sample appears not to match, call find_or_suggest_folder again with the same content/title/summary.
+3. If confidence <= 0.7, this is uncertain and should be treated as confirmation-needed by downstream logic.
+4. If is_new_folder = true, skip verification.
+
+CONFIDENCE GUIDE:
+0.9-1.0 = clearly fits
+0.7-0.9 = good match, verify first
+0.5-0.7 = uncertain
+< 0.5 = suggest new folder
+
+Always return a final answer consistent with keys:
+folder_name, is_new_folder, confidence, reason.
+Do not invent unsupported fields.
 
 Tools:
 {tools}
