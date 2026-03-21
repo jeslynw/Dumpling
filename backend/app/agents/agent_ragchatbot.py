@@ -2,7 +2,9 @@ from app.tools.tools_ragchatbot import (
     load_folder_registry,
     pick_relevant_folders,
     search_folder,
+    search_folder_rows,
     search_source,
+    search_source_rows,
 )
 from app.services.qdrant import get_existing_collections
 from app.services.openai import openai_llm
@@ -43,7 +45,7 @@ def _resolve_tool_decorator():
         return tool
 
 
-def _build_react_executor(tools: list, max_iterations: int = 5):
+def _build_react_executor(tools: list, folder_names: list[str] | None = None, max_iterations: int = 5):
     try:
         agents_mod = importlib.import_module("langchain.agents")
         prompts_mod = importlib.import_module("langchain_core.prompts")
@@ -51,10 +53,29 @@ def _build_react_executor(tools: list, max_iterations: int = 5):
         create_react_agent = getattr(agents_mod, "create_react_agent")
         PromptTemplate = getattr(prompts_mod, "PromptTemplate")
 
+        folder_names_text = ", ".join(folder_names or [])
+        if not folder_names_text:
+            folder_names_text = "(none)"
+
         react_prompt = PromptTemplate.from_template(
-            """You are a notebook RAG agent.
-Use tools to choose relevant folders and search notebook content.
-Prefer notebook sources; do not fabricate.
+            """You are a helpful assistant for a personal notebook app.
+You have access to the user's saved notes, links, documents, and images.
+
+Available folders: {folder_names}
+
+INSTRUCTIONS:
+1. ALWAYS call pick_relevant_folders first to find which folders are relevant
+2. If pick_relevant_folders returns relevant folders, call search_folder for each one
+3. If pick_relevant_folders returns NO relevant folders, still call search_folder
+   on the first available folder - this triggers the CRAG fallback chain which
+   will broaden the query, retry with larger top_k, and finally fall back to
+   Tavily web search if nothing is found in the notebook
+4. If the user asks about a specific source/file, call search_source instead
+5. NEVER say "I couldn't find that" without calling at least one search tool first
+6. If the answer comes from [WEB SEARCH RESULT], say so explicitly
+7. Always cite which folder and source your answer came from
+8. Only say "I couldn't find that in your notes." after all search tools have
+   been tried and returned nothing
 
 Tools:
 {tools}
@@ -69,7 +90,7 @@ Thought: I now know the final answer
 Final Answer: concise answer with supporting evidence
 
 {agent_scratchpad}"""
-        )
+    ).partial(folder_names=folder_names_text)
         agent = create_react_agent(openai_llm, tools, react_prompt)
         return AgentExecutor(
             agent=agent,
@@ -130,7 +151,7 @@ def _broaden_query(question: str) -> str:
 def _retrieve_across_folders(query: str, folders: list[str], top_k: int) -> list[dict]:
     all_results = []
     for folder in folders:
-        all_results.extend(search_folder(query=query, folder_name=folder, top_k=top_k))
+        all_results.extend(search_folder_rows(query=query, folder_name=folder, top_k=top_k))
     return all_results[:top_k]
 
 
@@ -164,10 +185,8 @@ def search_rag_across_folders(query: str, top_k: int = 5) -> dict:
     return query_notebook(query=query, top_k=top_k)
 
 
-def build_rag_chatbot(top_k: int = 5) -> dict:
-    """Build notebook-style chatbot tools as a fresh context per query."""
-    folder_registry = load_folder_registry()
-    existing = set(get_existing_collections())
+def make_chatbot_tools(folder_registry: dict, existing: set[str], top_k: int = 5) -> dict:
+    """Create notebook-style chatbot tools and mutable per-query state."""
     state = {"relevant_folders": [], "results": []}
     tool_decorator = _resolve_tool_decorator()
 
@@ -184,26 +203,21 @@ def build_rag_chatbot(top_k: int = 5) -> dict:
     @tool_decorator("search_folder")
     def search_folder_tool(question: str, folder_name: str) -> str:
         """Search one folder and return compact text context."""
-        rows = search_folder(question, folder_name=folder_name, top_k=top_k)
+        rows = search_folder_rows(question, folder_name=folder_name, top_k=top_k)
         state["results"].extend(rows)
-        return "\n\n".join((r.get("text") or "")[:1200] for r in rows)
+        return search_folder(question, folder_name=folder_name, top_k=top_k)
 
     @tool_decorator("search_source")
     def search_source_tool(question: str, folder_name: str, source: str) -> str:
         """Search one specific source/file inside a folder."""
-        rows = search_source(question, folder_name=folder_name, source=source, top_k=top_k)
+        rows = search_source_rows(question, folder_name=folder_name, source=source, top_k=top_k)
         state["results"].extend(rows)
-        return "\n\n".join((r.get("text") or "")[:1200] for r in rows)
+        return search_source(question, folder_name=folder_name, source=source, top_k=top_k)
 
     tools = [pick_relevant_folders_tool, search_folder_tool, search_source_tool]
-    executor = _build_react_executor(tools)
-
     return {
-        "top_k": top_k,
-        "folder_registry": folder_registry,
-        "existing": existing,
         "state": state,
-        "executor": executor,
+        "tool_list": tools,
         "tools": {
             "pick_relevant_folders": pick_relevant_folders_tool,
             "search_folder": search_folder_tool,
@@ -212,9 +226,26 @@ def build_rag_chatbot(top_k: int = 5) -> dict:
     }
 
 
+def build_rag_chatbot(top_k: int = 5) -> dict:
+    """Build notebook-style chatbot tools as a fresh context per query."""
+    folder_registry = load_folder_registry()
+    existing = set(get_existing_collections())
+    tools_ctx = make_chatbot_tools(folder_registry=folder_registry, existing=existing, top_k=top_k)
+    executor = _build_react_executor(tools_ctx["tool_list"], folder_names=sorted(existing))
+
+    return {
+        "top_k": top_k,
+        "folder_registry": folder_registry,
+        "existing": existing,
+        "state": tools_ctx["state"],
+        "executor": executor,
+        "tools": tools_ctx["tools"],
+    }
+
+
 def query_notebook(query: str, top_k: int = 5) -> dict:
     """
-    Notebook-style query runner with folder picking, hybrid retrieval, and CRAG backups.
+    Query runner with folder picking, hybrid retrieval, and CRAG backups.
     """
     chatbot = build_rag_chatbot(top_k=top_k)
     folder_registry = chatbot["folder_registry"]
