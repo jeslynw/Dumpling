@@ -1,7 +1,9 @@
 from fastapi import APIRouter
+from app.agents.agent_categorizer import categorize_note
+from app.schemas.folder import CategorizationRequest, CategorizationResult
 
-router = APIRouter(prefix="/folders", tags=["folders"])
+router = APIRouter()
 
-@router.get("/ping")
-def ping_folders():
-    return {"ok": True, "module": "folders"}
+@router.post("/categorize", response_model=CategorizationResult)
+def categorize(request: CategorizationRequest):
+    return categorize_note(request)
