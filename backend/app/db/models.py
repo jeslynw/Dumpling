@@ -1,10 +1,23 @@
-'''
-define tables with classes (SQLAlchemy ORM)
-'''
+"""Internal Pydantic models (not API schemas — see schemas/ for those)."""
+from pydantic import BaseModel
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-import uuid
 
-from app.db.database import Base
+class FolderEntry(BaseModel):
+    description: str
+    sources: list[str]
+
+
+class CategorizerResult(BaseModel):
+    folder_name: str
+    is_new_folder: bool
+    confidence: float
+    needs_confirmation: bool
+    source: str = ""
+
+
+class IngestionResult(BaseModel):
+    title: str
+    summary: str
+    folder: str | None
+    chunk_count: int
+    needs_confirmation: bool = False

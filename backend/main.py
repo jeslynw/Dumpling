@@ -1,41 +1,43 @@
-# fastapi
+"""
+SmartNotebook Backend
+Run with:  uvicorn main:app --reload --port 8000
+Docs at:   http://localhost:8000/docs
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db.database import Base, engine    # db tables + connection
-from app.api.routers import ingest, folders, files, chat    # route handlers
+from app.api.routers import chat, folders, ingest
 
-
-
-Base.metadata.create_all(bind=engine)
-
-# API app instance for project
 app = FastAPI(
     title="SmartNotebook API",
-    description="AI-powered notebook with auto-categorization, RAG chat, and contextual summaries.",
+    description="Agentic RAG notebook: ingest URLs / files / text, chat with your notes.",
     version="1.0.0",
 )
 
-# CORS -> middleware: code that runs before request reaches specific route
-
-########## DELETE if we dont end up creating user db ##########
+# ── CORS (adjust origins for production) ─────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000/simple"],  # Next.js dev server + TipTap
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],    # allow all http requests
-    allow_headers=["*"],    # allow auth token
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-################################################################
 
-# routing
+# ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(ingest.router)
 app.include_router(folders.router)
-app.include_router(files.router)
 app.include_router(chat.router)
 
 
-# testing
-@app.get("/health")
+@app.get("/", tags=["Health"])
+def root():
+    return {"status": "ok", "message": "SmartNotebook API is running"}
+
+
+@app.get("/health", tags=["Health"])
 def health():
-    return {"status": "ok"}
+    from app.services.qdrant import get_existing_collections
+    return {
+        "status": "ok",
+        "collections": get_existing_collections(),
+    }
