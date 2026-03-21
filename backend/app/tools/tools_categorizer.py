@@ -97,6 +97,16 @@ def suggest_folder(content: str, meta: dict) -> dict:
                     result = retry
 
     return result
+
+
+def find_or_suggest_folder(content: str, title: str = "", summary: str = "") -> dict:
+    """Notebook tool: find existing folder or suggest a new one."""
+    return suggest_folder(content, {"title": title, "summary": summary})
+
+
+def get_folder_contents_sample(folder_name: str, limit: int = 3) -> str:
+    """Notebook tool: fetch a small sample of chunks from a folder."""
+    return _sample_folder_contents(folder_name, limit=limit)
     
 def update_folder_registry(
     folder_name: str,
