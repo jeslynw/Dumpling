@@ -8,12 +8,23 @@ def load_folder_registry(meta_path: str = "backend/data/qdrant_db/meta.json") ->
         return {}
 
     with open(meta_file, "r") as f:
-        folders = json.load(f).get("folders", {})
+        payload = json.load(f)
+
+    # Preferred schema used by milestone 3+: {"folders": {"name": {"description": "..."}}}
+    folders = payload.get("folders")
+    if folders is None:
+        # Backward-compatible schema from Qdrant local metadata: {"collections": {...}}
+        collections = payload.get("collections", {})
+        if isinstance(collections, dict):
+            return {name: {"description": ""} for name in collections.keys()}
+        return {}
 
     if isinstance(folders, list):
         # Backward-compatible migration from legacy list format.
         return {name: {"description": ""} for name in folders}
-    return folders
+    if isinstance(folders, dict):
+        return folders
+    return {}
 
 def pick_relevant_folders(query: str, folder_registry: dict) -> list[str]:
     """
