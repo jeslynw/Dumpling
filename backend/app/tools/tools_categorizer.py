@@ -1,36 +1,182 @@
 # ...existing imports...
 from typing import Tuple
 import json
+import re
 from pathlib import Path
+from app.services.qdrant import qdrant, sanitize_name
+from app.services.openai import openai_llm
 
-def suggest_folder(content: str, meta: dict) -> Tuple[str, float]:
-    """
-    Suggest a folder/category for the note.
-    Replace this with LLM or rules-based logic.
-    """
-    # Example: simple keyword-based categorization
-    if "finance" in content.lower():
-        return "Finance", 0.9
-    elif "health" in content.lower():
-        return "Health", 0.85
-    else:
-        return "General", 0.5
-    
-def update_folder_registry(folder: str, meta_path: str = "backend/data/qdrant_db/meta.json"):
+
+def _sanitize_folder_name(name: str) -> str:
+    clean = re.sub(r"[^a-z0-9_]", "_", (name or "").strip().lower()).strip("_")
+    parts = [p for p in clean.split("_") if p]
+    # Keep new folder names concise like notebook guidance.
+    return "_".join(parts[:2]) if parts else "general"
+
+
+def _parse_json_response(raw_text: str) -> dict:
+    text = re.sub(r"^```(?:json)?\s*", "", (raw_text or "").strip())
+    text = re.sub(r"\s*```$", "", text.strip())
+    try:
+        return json.loads(text)
+    except Exception:
+        return {}
+
+
+def _load_registry(meta_path: str = "backend/data/qdrant_db/meta.json") -> dict:
     meta_file = Path(meta_path)
+    if not meta_file.exists():
+        return {}
+
+    with open(meta_file, "r") as f:
+        payload = json.load(f)
+
+    folders = payload.get("folders")
+    if isinstance(folders, dict):
+        return folders
+
+    # Compatibility with Qdrant local metadata format used in this project.
+    collections = payload.get("collections", {})
+    if isinstance(collections, dict):
+        return {name: {"description": ""} for name in collections.keys()}
+
+    if isinstance(folders, list):
+        return {name: {"description": ""} for name in folders}
+
+    return {}
+
+def suggest_folder(content: str, meta: dict) -> dict:
+    safe_content = (content or "")[:2500]
+    meta = meta or {}
+    title = (meta.get("title") or "").strip()
+    summary = (meta.get("summary") or "").strip()
+
+    registry = _load_registry()
+    if not registry:
+        folder_info = "No folders exist yet."
+    else:
+        folder_info = "\n".join(
+            f"- {name}: {(data or {}).get('description', '')}"
+            for name, data in registry.items()
+        )
+
+    preview = f"Title: {title}\nSummary: {summary}\nContent Preview: {safe_content}"
+
+    def _run_once(exclude_folder: str = "") -> dict:
+        prompt = _build_folder_prompt(preview, folder_info, exclude_folder=exclude_folder)
+        response = openai_llm.invoke(prompt)
+        parsed = _parse_json_response(response.content or "")
+        folder_name = _sanitize_folder_name(parsed.get("folder_name", "general"))
+        confidence = float(parsed.get("confidence", 0.5))
+        confidence = max(0.0, min(1.0, confidence))
+        is_new_folder = bool(parsed.get("is_new_folder", False))
+        reason = str(parsed.get("reason", "")).strip() or "No reason provided."
+        return {
+            "folder_name": folder_name,
+            "is_new_folder": is_new_folder,
+            "confidence": confidence,
+            "reason": reason,
+        }
+
+    # First suggestion
+    result = _run_once()
+
+    # Notebook-like verify/retry: high confidence existing folder -> sample check -> optional retry
+    if result["confidence"] > 0.7 and not result["is_new_folder"]:
+        sample = _sample_folder_contents(result["folder_name"])
+        if sample:
+            verify_prompt = (
+                "Given CONTENT and FOLDER SAMPLE, answer ONLY YES or NO if this folder is a good fit.\n\n"
+                f"CONTENT:\n{preview}\n\n"
+                f"FOLDER SAMPLE:\n{sample}"
+            )
+            verify = (openai_llm.invoke(verify_prompt).content or "").strip().upper()
+            if verify.startswith("N"):
+                retry = _run_once(exclude_folder=result["folder_name"])
+                if retry["confidence"] >= result["confidence"]:
+                    result = retry
+
+    return result
+    
+def update_folder_registry(
+    folder_name: str,
+    title: str = "",
+    summary: str = "",
+    source: str = "",
+    is_new_folder: bool = False,
+    meta_path: str = "backend/data/qdrant_db/meta.json",
+):
+    meta_file = Path(meta_path)
+    data = {}
     if meta_file.exists():
         with open(meta_file, "r") as f:
             data = json.load(f)
-    else:
-        data = {}
 
     folders = data.get("folders", {})
     if isinstance(folders, list):
-        # Migrate legacy list format to dict format used by RAG folder picker.
-        folders = {name: {"description": ""} for name in folders}
-    if folder not in folders:
-        folders[folder] = {"description": ""}
-    data["folders"] = folders
+        folders = {name: {"description": "", "sources": []} for name in folders}
 
+    safe_summary = (summary or "")[:1200]
+    if is_new_folder or folder_name not in folders:
+        desc_prompt = (
+            f"Write a concise 2-sentence folder description for '{folder_name}' "
+            f"based on: {safe_summary}"
+        )
+        description = (openai_llm.invoke(desc_prompt).content or "").strip()
+        folders[folder_name] = {
+            "description": description,
+            "sources": [source] if source else [],
+        }
+    else:
+        existing_desc = (folders[folder_name].get("description") or "").strip()
+        update_prompt = (
+            "Update this folder description to include new content.\n"
+            f"Current description: {existing_desc}\n"
+            f"New content summary: {safe_summary}\n"
+            "Return ONLY updated 2-sentence description."
+        )
+        folders[folder_name]["description"] = (openai_llm.invoke(update_prompt).content or "").strip()
+        srcs = folders[folder_name].get("sources", [])
+        if source and source not in srcs:
+            srcs.append(source)
+        folders[folder_name]["sources"] = srcs
+
+    data["folders"] = folders
     with open(meta_file, "w") as f:
         json.dump(data, f, indent=2)
+
+
+def _build_folder_prompt(content_preview: str, folder_info: str, exclude_folder: str = "") -> str:
+    exclude_note = (
+        f"\nDo NOT use folder '{exclude_folder}' - it was checked and does not fit."
+        if exclude_folder else ""
+    )
+    return (
+        "You are organizing a personal notebook.\n"
+        "Match by folder DESCRIPTION first, then title.\n"
+        "Only suggest a new folder if no existing folder scores >= 0.5.\n"
+        "New names: lowercase, alphanumeric + underscores, max 2 words.\n\n"
+        f"ITEM:\n{content_preview}\n\n"
+        f"EXISTING FOLDERS:\n{folder_info}{exclude_note}\n\n"
+        "Return ONLY JSON:\n"
+        "{\"folder_name\":\"finance\",\"is_new_folder\":false,\"confidence\":0.82,\"reason\":\"...\"}"
+    )
+
+
+def _sample_folder_contents(folder_name: str, limit: int = 3) -> str:
+    safe = sanitize_name(folder_name)
+    if not qdrant.collection_exists(safe):
+        return ""
+    results, _ = qdrant.scroll(
+        collection_name=safe,
+        limit=limit,
+        with_payload=True,
+        with_vectors=False,
+    )
+    snippets = []
+    for point in results:
+        payload = point.payload or {}
+        text = payload.get("page_content", "")[:200]
+        if text:
+            snippets.append(text)
+    return "\n".join(snippets)

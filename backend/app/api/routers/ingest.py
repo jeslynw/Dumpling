@@ -21,7 +21,7 @@ class IngestRequest(BaseModel):
     content: str
     filename: Optional[str] = ""
     store_to_qdrant: bool = False
-    folder_name: Optional[str] = "inbox"
+    folder_name: Optional[str] = None
 
 
 @router.get("/ping")
@@ -66,7 +66,7 @@ async def ingest_upload(
     file: UploadFile = File(...),
     note_id: Optional[str] = Form(default=None),
     store_to_qdrant: bool = Form(default=False),
-    folder_name: Optional[str] = Form(default="inbox"),
+    folder_name: Optional[str] = Form(default=None),
 ):
     """
     Prototype upload path:

@@ -75,10 +75,10 @@ def _generate_title_and_summary(content: str, source_hint: str = "") -> Tuple[st
     return title, summary
 
 
-def run_ingestion_agent(raw_content: str, filename: str = "") -> Tuple[List[Document], str, str]:
+def run_ingestion_agent(raw_content: str, filename: str = "") -> Tuple[List[Document], str, str, str, float]:
     """
     Prototype ingestion orchestrator.
-    Returns: (docs, title, summary)
+    Returns: (docs, title, summary, suggested_folder, confidence)
     """
     input_type = _detect_input_type(raw_content=raw_content, filename=filename)
 
@@ -103,7 +103,7 @@ def run_ingestion_agent(raw_content: str, filename: str = "") -> Tuple[List[Docu
     # --- Categorizer integration ---
     cat_request = CategorizationRequest(content=first_content, meta={"filename": filename})
     cat_result = categorize_note(cat_request)
-    suggested_folder = cat_result.suggested_folder
+    suggested_folder = cat_result.folder_name
     confidence = cat_result.confidence
 
     return docs, title, summary, suggested_folder, confidence

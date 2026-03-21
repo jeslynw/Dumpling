@@ -6,5 +6,7 @@ class CategorizationRequest(BaseModel):
     meta: Optional[Dict] = None
 
 class CategorizationResult(BaseModel):
-    suggested_folder: str
+    folder_name: str
+    is_new_folder: bool
     confidence: float
+    reason: str
