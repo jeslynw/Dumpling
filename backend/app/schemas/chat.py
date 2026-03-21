@@ -5,6 +5,12 @@ class RAGChatRequest(BaseModel):
     query: str
     top_k: int = 5
 
+
+class SourceItem(BaseModel):
+    source: str
+    collection: str
+
+
 class RAGChatResponse(BaseModel):
-    query: str
-    context: List[str]
+    answer: str
+    sources: List[SourceItem]

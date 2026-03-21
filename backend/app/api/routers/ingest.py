@@ -14,6 +14,7 @@ from app.agents.agent_ingestion import run_ingestion_agent
 from app.services.qdrant import add_documents
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
+LOW_CONFIDENCE_THRESHOLD = 0.7
 
 
 class IngestRequest(BaseModel):
@@ -36,7 +37,8 @@ def ingest(payload: IngestRequest):
             filename=payload.filename or "",
         )
 
-        target_folder = payload.folder_name or "inbox"
+        explicit_folder = (payload.folder_name or "").strip()
+        target_folder = explicit_folder or suggested_folder or "inbox"
         stored = False
         if payload.store_to_qdrant and docs:
             add_documents(target_folder, docs)
@@ -48,6 +50,7 @@ def ingest(payload: IngestRequest):
             "summary": summary,
             "suggested_folder": suggested_folder,
             "confidence": confidence,
+            "needs_user_confirmation": confidence < LOW_CONFIDENCE_THRESHOLD,
             "chunk_count": len(docs),
             "input_filename": payload.filename or "",
             "sample_metadata": docs[0].metadata if docs else {},
@@ -84,7 +87,8 @@ async def ingest_upload(
             filename=file.filename or "",
         )
 
-        target_folder = folder_name or "inbox"
+        explicit_folder = (folder_name or "").strip()
+        target_folder = explicit_folder or suggested_folder or "inbox"
         stored = False
         if store_to_qdrant and docs:
             add_documents(target_folder, docs)
@@ -98,6 +102,7 @@ async def ingest_upload(
             "summary": summary,
             "suggested_folder": suggested_folder,
             "confidence": confidence,
+            "needs_user_confirmation": confidence < LOW_CONFIDENCE_THRESHOLD,
             "chunk_count": len(docs),
             "sample_metadata": docs[0].metadata if docs else {},
             "stored_to_qdrant": stored,
