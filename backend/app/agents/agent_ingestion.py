@@ -10,6 +10,8 @@ from app.tools.tools_ingestion import (
     analyze_image,
     wrap_text,
 )
+from app.agents.agent_categorizer import categorize_note
+from app.schemas.folder import CategorizationRequest
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".jfif"}
 DOC_EXTS = {".pdf", ".docx", ".doc", ".pptx", ".html", ".htm", ".md", ".txt"}
@@ -98,5 +100,10 @@ def run_ingestion_agent(raw_content: str, filename: str = "") -> Tuple[List[Docu
     first_content = docs[0].page_content if docs else (raw_content or "")[:600]
     source_hint = filename or (raw_content[:60] if raw_content else "Untitled")
     title, summary = _generate_title_and_summary(first_content, source_hint=source_hint)
+    # --- Categorizer integration ---
+    cat_request = CategorizationRequest(content=first_content, meta={"filename": filename})
+    cat_result = categorize_note(cat_request)
+    suggested_folder = cat_result.suggested_folder
+    confidence = cat_result.confidence
 
-    return docs, title, summary
+    return docs, title, summary, suggested_folder, confidence
