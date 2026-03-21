@@ -3,6 +3,7 @@ from typing import Tuple
 import json
 import re
 from pathlib import Path
+from app.core.json_utils import parse_json_response
 from app.services.qdrant import qdrant, sanitize_name
 from app.services.openai import openai_llm
 
@@ -12,15 +13,6 @@ def _sanitize_folder_name(name: str) -> str:
     parts = [p for p in clean.split("_") if p]
     # Keep new folder names concise like notebook guidance.
     return "_".join(parts[:2]) if parts else "general"
-
-
-def _parse_json_response(raw_text: str) -> dict:
-    text = re.sub(r"^```(?:json)?\s*", "", (raw_text or "").strip())
-    text = re.sub(r"\s*```$", "", text.strip())
-    try:
-        return json.loads(text)
-    except Exception:
-        return {}
 
 
 def _load_registry(meta_path: str = "backend/data/qdrant_db/meta.json") -> dict:
@@ -65,7 +57,7 @@ def suggest_folder(content: str, meta: dict) -> dict:
     def _run_once(exclude_folder: str = "") -> dict:
         prompt = _build_folder_prompt(preview, folder_info, exclude_folder=exclude_folder)
         response = openai_llm.invoke(prompt)
-        parsed = _parse_json_response(response.content or "")
+        parsed = parse_json_response(response.content or "")
         folder_name = _sanitize_folder_name(parsed.get("folder_name", "general"))
         confidence = float(parsed.get("confidence", 0.5))
         confidence = max(0.0, min(1.0, confidence))

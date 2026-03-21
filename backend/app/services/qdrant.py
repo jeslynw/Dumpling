@@ -11,8 +11,6 @@ Hybrid retrieval pipeline (used by agent_ragchatbot):
 3. RRF fusion: merges both ranked lists
 4. Reranker: cross-encoder reorders final candidates
 """
-import re
-import json
 from functools import lru_cache
 from qdrant_client import QdrantClient
 from langchain_qdrant import QdrantVectorStore
@@ -22,34 +20,29 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 
 from app.core.config import QDRANT_PATH, RAG_TOP_K, RERANKER_MODEL
+from app.core.json_utils import parse_json_response as _shared_parse_json_response
 from app.services.openai import openai_embeddings as embeddings
 
 
 qdrant = QdrantClient(path=QDRANT_PATH)
 
-
+# Checked
 def sanitize_name(name: str) -> str:
     return "".join(c for c in name.lower() if c.isalnum() or c == "_")
 
-
+# Checked
 def parse_json_response(raw_text: str) -> dict:
-    """Strip markdown fences and parse JSON from LLM output."""
-    text = re.sub(r"^```(?:json)?\s*", "", raw_text.strip())
-    text = re.sub(r"\s*```$", "", text.strip())
-    try:
-        return json.loads(text)
-    except Exception as e:
-        print(f"JSON parse error: {e}")
-        return {}
+    """Backward-compatible wrapper around shared JSON parser utility."""
+    return _shared_parse_json_response(raw_text)
 
-
+# Checked
 def get_existing_collections() -> list[str]:
     try:
         return [c.name for c in qdrant.get_collections().collections]
     except Exception:
         return []
 
-
+# Checked
 def get_vectorstore(collection_name: str) -> QdrantVectorStore:
     safe_name = sanitize_name(collection_name)
     
@@ -70,13 +63,14 @@ def get_vectorstore(collection_name: str) -> QdrantVectorStore:
         collection_name=safe_name,
         embedding=embeddings
     )
-
+# Checked
 def add_documents(collection_name: str, docs: list[Document]):
     vs = get_vectorstore(collection_name)
     vs.add_documents(docs)
     print(f"Added {len(docs)} chunks to '{sanitize_name(collection_name)}'")
 
 # scroll through Qdrant to get every stored chunk's text bcs BM25 is exact keyword
+# was get_all_documents_from_qdrant but renamed to clarify it's for BM25 retrieval, not vector search
 def get_all_documents_for_bm25(collection_name: str) -> list[Document]:
     safe_name = sanitize_name(collection_name)
     all_docs = []
