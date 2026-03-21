@@ -107,3 +107,11 @@ def get_all_documents_for_bm25(collection_name: str) -> list[Document]:
         offset = next_offset
     
     return all_docs
+
+def search_qdrant(query: str, top_k: int = 5, collection_name: str = "default") -> list[str]:
+    """
+    Semantic search in a single Qdrant collection (folder).
+    """
+    vs = get_vectorstore(collection_name)
+    docs = vs.similarity_search(query, k=top_k)
+    return [doc.page_content for doc in docs]
