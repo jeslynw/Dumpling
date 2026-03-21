@@ -1,3 +1,7 @@
+
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 import pytest
 from app.agents.agent_categorizer import categorize_note
 from app.schemas.folder import CategorizationRequest
