@@ -246,23 +246,28 @@ def query_notebook(query: str, top_k: int = 5) -> dict:
     limited = chatbot["state"].get("results", [])[:top_k]
     if not limited:
         limited = _retrieve_across_folders(query, relevant_folders, top_k)
+    had_notebook_hits = bool(limited)
 
     # CRAG backup 1: broaden query and retry
     if not _grade_chunks(query, limited):
         broader = _broaden_query(query)
         limited = _retrieve_across_folders(broader, relevant_folders, top_k)
+        had_notebook_hits = had_notebook_hits or bool(limited)
 
         # CRAG backup 2: larger k retrieval
         if not _grade_chunks(query, limited):
             larger_k = max(top_k * 3, RAG_TOP_K_EVAL)
             limited = _retrieve_across_folders(broader, relevant_folders, larger_k)
             limited = limited[:top_k]
+            had_notebook_hits = had_notebook_hits or bool(limited)
 
             # CRAG backup 3: Tavily web fallback
             if not _grade_chunks(query, limited):
-                web = _tavily_search(query)
-                if web:
-                    limited = web
+                # Keep notebook-first behavior: only use web fallback when no notebook hits exist.
+                if not had_notebook_hits:
+                    web = _tavily_search(query)
+                    if web:
+                        limited = web
 
     if not limited:
         return {

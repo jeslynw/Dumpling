@@ -99,12 +99,14 @@ def build_categorizer_agent() -> dict:
 
     @tool_decorator("find_or_suggest_folder")
     def find_or_suggest_folder_tool(content: str, title: str = "", summary: str = "") -> str:
+        """Suggest the best folder for note content and return JSON with confidence and reason."""
         result = find_or_suggest_folder(content=content, title=title, summary=summary)
         state["candidate"] = result
         return json.dumps(result)
 
     @tool_decorator("get_folder_contents_sample")
     def get_folder_contents_sample_tool(folder_name: str, limit: int = 3) -> str:
+        """Return a small sample of existing chunks from a folder for verification."""
         return get_folder_contents_sample(folder_name=folder_name, limit=limit)
 
     tools = [find_or_suggest_folder_tool, get_folder_contents_sample_tool]
