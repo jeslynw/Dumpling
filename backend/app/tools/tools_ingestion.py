@@ -131,7 +131,7 @@ def parse_document(filepath: str) -> List[Document]:
         c.metadata["file_id"] = p.name
     return chunks
 
-
+#checked
 def analyze_image(filepath: str) -> List[Document]:
     p = Path(filepath)
     if not p.exists():
