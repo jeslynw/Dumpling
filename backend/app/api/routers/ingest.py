@@ -31,7 +31,7 @@ def ping_ingest():
 @router.post("")
 def ingest(payload: IngestRequest):
     try:
-        docs, title, summary = run_ingestion_agent(
+        docs, title, summary, suggested_folder, confidence = run_ingestion_agent(
             raw_content=payload.content,
             filename=payload.filename or "",
         )
@@ -46,6 +46,8 @@ def ingest(payload: IngestRequest):
             "ok": True,
             "title": title,
             "summary": summary,
+            "suggested_folder": suggested_folder,
+            "confidence": confidence,
             "chunk_count": len(docs),
             "input_filename": payload.filename or "",
             "sample_metadata": docs[0].metadata if docs else {},
@@ -77,7 +79,7 @@ async def ingest_upload(
             tmp.write(data)
             temp_path = tmp.name
 
-        docs, title, summary = run_ingestion_agent(
+        docs, title, summary, suggested_folder, confidence = run_ingestion_agent(
             raw_content=temp_path,
             filename=file.filename or "",
         )
@@ -94,6 +96,8 @@ async def ingest_upload(
             "filename": file.filename,
             "title": title,
             "summary": summary,
+            "suggested_folder": suggested_folder,
+            "confidence": confidence,
             "chunk_count": len(docs),
             "sample_metadata": docs[0].metadata if docs else {},
             "stored_to_qdrant": stored,

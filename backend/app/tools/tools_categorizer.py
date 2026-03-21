@@ -23,6 +23,14 @@ def update_folder_registry(folder: str, meta_path: str = "backend/data/qdrant_db
             data = json.load(f)
     else:
         data = {}
-    data.setdefault("folders", []).append(folder)
+
+    folders = data.get("folders", {})
+    if isinstance(folders, list):
+        # Migrate legacy list format to dict format used by RAG folder picker.
+        folders = {name: {"description": ""} for name in folders}
+    if folder not in folders:
+        folders[folder] = {"description": ""}
+    data["folders"] = folders
+
     with open(meta_file, "w") as f:
         json.dump(data, f, indent=2)

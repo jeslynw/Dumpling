@@ -1,9 +1,19 @@
 import json
+from pathlib import Path
 from app.services.openai import openai_llm
 
 def load_folder_registry(meta_path: str = "backend/data/qdrant_db/meta.json") -> dict:
-    with open(meta_path, "r") as f:
-        return json.load(f).get("folders", {})
+    meta_file = Path(meta_path)
+    if not meta_file.exists():
+        return {}
+
+    with open(meta_file, "r") as f:
+        folders = json.load(f).get("folders", {})
+
+    if isinstance(folders, list):
+        # Backward-compatible migration from legacy list format.
+        return {name: {"description": ""} for name in folders}
+    return folders
 
 def pick_relevant_folders(query: str, folder_registry: dict) -> list[str]:
     """
