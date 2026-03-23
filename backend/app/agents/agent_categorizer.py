@@ -4,12 +4,26 @@ Categorizer agent (ReAct, 2 tools):
   - get_folder_contents_sample : verify a candidate folder by peeking at its chunks
 """
 from langchain.agents import create_agent
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from app.core.constants import CATEGORIZER_CONFIDENCE_THRESHOLD
 from app.services.openai import llm
 from app.tools.tools_categorizer import find_or_suggest_folder, get_folder_contents_sample
 import re, json
+
+def print_trace(response: dict) -> None:
+    msgs = response.get("messages", [])
+    print(f"Trace ({len(msgs)} messages)\n" + "-" * 50)
+    for i, msg in enumerate(msgs):
+        if isinstance(msg, HumanMessage):
+            print(f"[{i}] USER       : {msg.content}")
+        elif isinstance(msg, AIMessage) and msg.tool_calls:
+            for tc in msg.tool_calls:
+                print(f"[{i}] TOOL CALL  : {tc['name']}({tc['args']})")
+        elif isinstance(msg, AIMessage):
+            print(f"[{i}] FINAL ANS  : {msg.content}")
+        elif isinstance(msg, ToolMessage):
+            print(f"[{i}] TOOL RESP  : [{msg.name}] → {msg.content}")
 
 
 def _parse_json_response(raw_text: str) -> dict:
@@ -21,7 +35,7 @@ def _parse_json_response(raw_text: str) -> dict:
         return {}
 
 
-# ── Module-level agent (stateless — safe to reuse) ───────────────────────────
+# Module-level agent (stateless — safe to reuse) 
 _categorizer_agent = create_agent(
     llm,
     tools=[find_or_suggest_folder, get_folder_contents_sample],
@@ -34,14 +48,15 @@ _categorizer_agent = create_agent(
     Summary: <summary>
 
     DECISION PROCESS (follow in order):
-    1. Call find_or_suggest_folder(content_previews=[<full input>]) — always first.
-    It returns a JSON object keyed by item index with: folder_name, is_new, confidence, reason.
+    1. Call find_or_suggest_folder(content_preview) with the full input you received — always first
+        - It returns: folder_name | is_new | confidence | reason
     2. If confidence > 0.7 AND is_new=false:
-    - Call get_folder_contents_sample(folder_name) to verify the folder fits.
-    - If the sample MATCHES: use that folder.
-    - If it does NOT match: call find_or_suggest_folder again with exclude_folder='<folder_name>'.
-    3. If confidence <= 0.7: skip verification, set needs_confirmation=true.
-    4. If is_new=true: skip verification — it's a new folder.
+        - Call get_folder_contents_sample(folder_name) to verify the folder fits
+        - If the sample MATCHES the content: use that folder
+        - If the sample does NOT match: call find_or_suggest_folder again
+        with exclude_folder='<folder_name>' to get a different suggestion
+    3. If confidence <= 0.7: skip verification, set needs_confirmation=true
+    4. If confidence > 0.7 AND is_new=true: skip verification, it's a new folder
 
     CONFIDENCE GUIDE:
     0.9-1.0 = clearly fits, assign confidently
@@ -68,6 +83,7 @@ def run_categorizer_agent(title: str, summary: str, source: str = "") -> dict:
     result = _categorizer_agent.invoke({
         "messages": [HumanMessage(content=content_preview)]
     })
+    print_trace(result)
     output = result["messages"][-1].content
 
     try:

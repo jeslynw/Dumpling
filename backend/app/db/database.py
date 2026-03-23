@@ -50,7 +50,7 @@ def update_folder_registry(
         )
         description = llm.invoke(desc_prompt).content.strip()
         registry[folder_name] = {"description": description, "sources": [source]}
-        print(f"  📁 Created registry entry for '{folder_name}'")
+        print(f"Created registry entry for '{folder_name}'")
     else:
         existing_desc = _sanitize_text(registry[folder_name]["description"])
         update_prompt = (
@@ -62,6 +62,6 @@ def update_folder_registry(
         registry[folder_name]["description"] = llm.invoke(update_prompt).content.strip()
         if source not in registry[folder_name]["sources"]:
             registry[folder_name]["sources"].append(source)
-        print(f"  📁 Updated registry entry for '{folder_name}'")
+        print(f"Updated registry entry for '{folder_name}'")
 
     save_registry(registry)

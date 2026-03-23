@@ -7,10 +7,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # /ingest
-# ─────────────────────────────────────────────────────────────────────────────
-
 class IngestTextRequest(BaseModel):
     """Ingest raw user textbox input (URLs, filenames, plain text mixed together)."""
     raw_input: str = Field(..., description="Raw text from the user's input box")
@@ -43,10 +40,7 @@ class ConfirmFolderResponse(BaseModel):
     chunk_count: int
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # /folders
-# ─────────────────────────────────────────────────────────────────────────────
-
 class FolderInfo(BaseModel):
     name: str
     description: str
@@ -62,10 +56,7 @@ class FolderDeleteResponse(BaseModel):
     remaining: list[str]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # /chat
-# ─────────────────────────────────────────────────────────────────────────────
-
 class ChatRequest(BaseModel):
     question: str = Field(..., description="User's question to the notebook")
 

@@ -13,23 +13,21 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.core.constants import CHUNK_OVERLAP, CHUNK_SIZE
-from app.services.openai import vision_client
-from app.services.summarizer import generate_document_summary, generate_chunk_context
+# from app.services.summarizer import generate_document_summary, generate_chunk_context
 
-# Docling converter — handles PDF, DOCX, PPTX, HTML, images (loaded once)
+# Docling converter
 docling_converter = DocumentConverter()
 
 
-# ── Web scraping ──────────────────────────────────────────────────────────────
-
+# Web scraping
 def scrape_and_chunk(url: str) -> list[Document]:
-    """WebBaseLoader → clean whitespace → split → Contextual RAG → tag chunks with file_id=url."""
+    """WebBaseLoader -> clean whitespace -> split -> Contextual RAG -> tag chunks with file_id=url."""
     print(f"Scraping: {url}")
     try:
         loader = WebBaseLoader(url)
         raw_docs = loader.load()
     except Exception as e:
-        print(f"  ❌ Failed to scrape {url}: {e}")
+        print(f"Failed to scrape {url}: {e}")
         return []
 
     if not raw_docs:
@@ -41,21 +39,24 @@ def scrape_and_chunk(url: str) -> list[Document]:
     splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
     chunks = splitter.split_documents(raw_docs)
 
-    # Generate a whole-document summary once — used as context for every chunk
-    full_text = raw_docs[0].page_content
-    doc_summary = generate_document_summary(full_text)
+    # # Generate a whole-document summary once — used as context for every chunk
+    # full_text = raw_docs[0].page_content
+    # doc_summary = generate_document_summary(full_text)
 
-    enriched = []
-    for i, chunk in enumerate(chunks):
-        context = generate_chunk_context(doc_summary, chunk.page_content)
-        chunk.page_content = f"CONTEXT: {context}\n\nCHUNK CONTENT:\n{chunk.page_content}"
+    # enriched = []
+    # for i, chunk in enumerate(chunks):
+    #     context = generate_chunk_context(doc_summary, chunk.page_content)
+    #     chunk.page_content = f"CONTEXT: {context}\n\nCHUNK CONTENT:\n{chunk.page_content}"
+    #     chunk.metadata["file_id"] = url
+    #     enriched.append(chunk)
+    #     if (i + 1) % 5 == 0:   # brief pause every 5 chunks to avoid rate limits
+    #         time.sleep(1)
+
+    for chunk in chunks:
         chunk.metadata["file_id"] = url
-        enriched.append(chunk)
-        if (i + 1) % 5 == 0:   # brief pause every 5 chunks to avoid rate limits
-            time.sleep(1)
 
-    print(f"✅ Got {len(enriched)} contextual chunks from {url}")
-    return enriched
+    print(f"Got {len(chunks)} chunks from {url}")
+    return chunks
 
 
 # ── Docling parsing ───────────────────────────────────────────────────────────
@@ -95,13 +96,13 @@ def chunk_with_context(full_text: str, filename: str = "", input_type: str = "do
         }]
     )
 
-    # apply contextual RAG to every chunk
-    enriched = []
-    doc_summary = generate_document_summary(full_text)
-    for chunk in chunks:
-        context = generate_chunk_context(doc_summary, chunk.page_content)
-        chunk.page_content = f"CONTEXT: {context}\n\nCHUNK CONTENT:\n{chunk.page_content}"
-        enriched.append(chunk)
+    # # apply contextual RAG to every chunk
+    # enriched = []
+    # doc_summary = generate_document_summary(full_text)
+    # for chunk in chunks:
+    #     context = generate_chunk_context(doc_summary, chunk.page_content)
+    #     chunk.page_content = f"CONTEXT: {context}\n\nCHUNK CONTENT:\n{chunk.page_content}"
+    #     enriched.append(chunk)
 
-    print(f"  ✅ {len(enriched)} contextual chunks from '{filename or input_type}'")
-    return enriched
+    print(f"{len(chunks)} chunks from '{filename or input_type}'")
+    return chunks

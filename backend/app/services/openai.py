@@ -13,23 +13,21 @@ from app.core.constants import (
     RERANKER_MODEL,
 )
 
-# ── LangChain LLM (used everywhere) ──────────────────────────────────────────
+# LangChain LLM
 llm = ChatOpenAI(
     model=OPENAI_LLM_MODEL,
     api_key=OPENAI_API_KEY,
     temperature=0.1,
 )
 
-# ── Embeddings (1536-dim, stored in Qdrant) ───────────────────────────────────
+# Embeddings (1536-dim, stored in Qdrant)
 openai_embeddings = OpenAIEmbeddings(
     model=OPENAI_EMBED_MODEL,
     api_key=OPENAI_API_KEY,
 )
 
-# ── Raw OpenAI client (vision API calls) ─────────────────────────────────────
+# Raw OpenAI client
 vision_client = RawOpenAI(api_key=OPENAI_API_KEY)
 
-# ── Cross-encoder reranker (loaded ONCE — reloading causes PyTorch meta-tensor error) ──
-print(f"Loading reranker model: {RERANKER_MODEL}")
+# Cross-encoder reranker
 cross_encoder = HuggingFaceCrossEncoder(model_name=RERANKER_MODEL)
-print("✅ Reranker loaded")
