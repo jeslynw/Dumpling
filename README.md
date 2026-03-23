@@ -1,41 +1,85 @@
-# 📓 SmartNotebook (To be updated)
+# 🥟 Dumpling | Smart Notebook (To be updated)
 
-> An AI-powered smart notebook that automatically organizes messy text and images into structured, searchable knowledge.
-
-SmartNotebook addresses the problem of unstructured content using **Agentic AI + LLMs + Retrieval-Augmented Generation (RAG)**.
+> An AI-powered smart notebook that automatically organizes, categorizes, and retrieves unstructured content using Agentic AI, LLMs, and Retrieval-Augmented Generation (RAG).
 
 ---
 
 ## 🚀 Overview
+Managing notes and saved content is messy — URLs, PDFs, images, and plain text scattered across topics with no structure. Dumpling solves this by automatically ingesting, categorizing, and making all your content queryable.
 
-Current notes and content suffer from:
+**The problem:**
 - Unstructured, messy, and scattered across topics  
-- Poorly categorized  
-- Hard to find or search  
-- Time-consuming to organize and review  
+- People tend to dump important sources and not organize them.
+- Finding specific information across many saved items is time-consuming
 
-SmartNotebook solves this by:
-- 📷 Extracting text from images
-- 📝 Summarizing long content
-- 🗂 Automatically categorizing notes
-- 🧠 Storing notes with semantic memory
-- 🔎 Allowing contextual question answering over past notes
+** Dumpling solves this by: **
+- 📄 Extracts text from PDFs, DOCX, PPTX, and images
+- 🌐 Scrapes web URLs
+- 🗂️ Automatically categorizes content into folders
+- 🔎 Answers domain specific question over your saved content
+- ✅ Self-evaluates answers for hallucinations
 
 ---
 
 ## 🧠 How It Works
+Dumpling is built with 3 agentics AI
+### Ingestion Agent
+Accepts messy multi-type input (URLs, file paths, plain text) in a single textbox. An LLM first parses the input into individual items, then a ReAct agent picks the right tool for each:
+- `scrape_url_tool`: Fetches web pages via WebBaseLoader
+- `parse_document_tool`: Extracts text from PDF, DOCX, PPTX, HTML, and images via Docling
+- `analyze_image_tool`: Analyze image from PNG / JPG / JPEG / GIF / WEBP via Vision API 
+- `wrap_text_tool`: Processes plain text directly
 
-- **Content Ingestion** — Paste text, upload PDFs/images/URLs, or use the homepage hero input. Files are processed by the Ingestion Agent, which extracts text and metadata.
-- **AI Categorisation** — The Categorisation Agent automatically assigns tags and categories to each note using an LLM, keeping your knowledge base organised without manual effort.
-- **Semantic Search** — Notes and attachments are embedded into a vector database (Qdrant). The RAG pipeline retrieves the most relevant chunks to answer your questions accurately.
-- **Chat with Bao (Global Chat)** — The `/chat` page lets you ask anything across your entire knowledge base. The AI searches all notes and returns an answer with source references.
-- **Note-Scoped Chat** — Inside any note editor, the floating "Chat with Bao" panel lets you query just that note's content using the same RAG backend, scoped by `context_note_ids`.
+Every chunk is enriched with a 2–3 sentence LLM-generated context before storage (Contextual RAG), improving retrieval accuracy.
+
+### Categorizer Agent
+Takes the title and summary from the Ingestion Agent and decides which folder the content belongs to. Uses two tools:
+- `find_or_suggest_folder`: Reads the folder registry and matches content to an existing folder or proposes a new one
+- `get_folder_contents_sample`: Peeks at existing folder contents to verify the match
+
+Results are stored in Qdrant and the folder registry is updated with an LLM-generated description.
+
+### RAG Chatbot Agent
+Answer user query uses three tools:
+- `pick_relevant_folders`: Picks which folder is relevant to the user’s question
+- `search_folder`: Search within a specific folder using Hybrid RAG + CRAG
+- `search_source`: Search within a specific source (URL or filename) inside a folder.
+  
+Answers are retrieved by a Hybrid RAG:
+- **Dense retrieval** — Qdrant semantic search (OpenAI `text-embedding-3-small`)
+- **Sparse retrieval** — BM25 keyword search
+- **Fusion** — Reciprocal Rank Fusion (RRF)
+- **Reranking** — CrossEncoder (`ms-marco-MiniLM-L-6-v2`)
+- **CRAG fallback** — if retrieved chunks are not relevant, the agent broadens the query, retries with a larger top-K, and finally falls back to Tavily web search
+
+### Critic-Eval Agent
+Wraps the RAG Chatbot Agent and acts as a quality gate. Evaluates every notebook-derived answer for hallucination using LLM-as-a-judge. If the faithfulness score falls below the threshold, it regenerates the answer with a refined prompt and re-evaluates, up to a configurable maximum number of retries. Answers sourced from Tavily web search bypass the critic.
+Uses three tools:
+`get_full_chunks_from_qdrant`: Retrieve the full chunks from Qdrant for the searched folders as the grounding truth context for judge evaluation.
+`judge_answer`: Evaluate whether the generated answer is grounded
+`regenerate_answer`: Re-runs the RAG Chatbot Agent with a refined prompt when score falls below threshold
 
 ---
 
-## 🔁 High-Level Workflow
-
----
+## 🔁 Pipeline Flow
+```
+User input (text / URL / file)
+    ↓
+parse_user_input()       — LLM separates into [{content, type_hint}]
+    ↓
+prepare_input()          — reads local files, passes URLs/text unchanged
+    ↓
+Ingestion Agent          — extracts text → contextual chunks → (docs, title, summary)
+    ↓
+Categorizer Agent        — assigns folder → stores in Qdrant → updates registry
+    ↓
+Query time:
+User question
+    ↓
+RAG Chatbot Agent        — pick folders → hybrid RAG → CRAG fallback → draft answer
+    ↓
+Critic-Eval Agent        — judge faithfulness → regenerate if needed → final answer
+```
 
 ## 🏗 Tech Stack
 
@@ -51,15 +95,25 @@ SmartNotebook solves this by:
 - Vector Database (Qdrant)
 
 ### AI Components
-- **Multimodal LLM** - summarizes and classifies images and links  
-- **Retrieval-Augmented Generation (RAG)**
-
-### Web Scraping
+| Component | Model / Library |
+|---|---|
+| LLM (main) | OpenAI `gpt-4o-mini` |
+| LLM (chatbot) | Groq `llama-3.1-8b-instant` |
+| Embeddings | OpenAI `text-embedding-3-small` (1536-dim) |
+| Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` (local) |
+| Document parsing | Docling (PDF, DOCX, PPTX, HTML, images, OCR) |
+| Web search fallback | Tavily |
+| RAG framework | LangChain |
 
 ---
 
 ## ⚙️ Installation
-
+### Prerequisites
+- Conda
+- Node.js 18+
+- OpenAI API key
+- Groq API key
+- Tavily API key  
 ---
 
 ### 1. Frontend Setup
