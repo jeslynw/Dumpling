@@ -12,7 +12,7 @@ Managing notes and saved content is messy — URLs, PDFs, images, and plain text
 - People tend to dump important sources and not organize them.
 - Finding specific information across many saved items is time-consuming
 
-** Dumpling solves this by: **
+**Dumpling solves this by:**
 - 📄 Extracts text from PDFs, DOCX, PPTX, and images
 - 🌐 Scrapes web URLs
 - 🗂️ Automatically categorizes content into folders
