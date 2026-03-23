@@ -2,14 +2,43 @@ import { apiFetch, USE_MOCKS } from "./client";
 import { mockNotes } from "../mocks/notes";
 import type { Note } from "../types";
 
-// TODO: BACKEND — Remove mock branches once FastAPI /notes routes are live
+// ── Backend folder shape ──────────────────────────────────────────────────────
+interface BackendFolder {
+  name: string;
+  description: string;
+  sources: string[];
+}
 
+interface FolderListResponse {
+  folders: BackendFolder[];
+}
+
+// Map a backend folder → frontend Note shape so the rest of the UI works unchanged
+function folderToNote(folder: BackendFolder): Note {
+  return {
+    id: folder.name,                        // folder name is the stable ID
+    title: folder.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+    content: folder.description,
+    attachments: folder.sources.map((src, i) => ({
+      id: `${folder.name}-src-${i}`,
+      name: src.startsWith("http") ? new URL(src).hostname : src,
+      url: src,
+      type: src.startsWith("http") ? "link" : "file",
+    })),
+    tags: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    thumbnail_color: "from-purple-400/30 to-violet-200/20",
+    source_count: folder.sources.length,
+  };
+}
+
+// ── getNotes → GET /folders ───────────────────────────────────────────────────
 export async function getNotes(params?: {
   deleted?: boolean;
 }): Promise<Note[]> {
   if (USE_MOCKS) {
     let notes = [...mockNotes];
-    // Default: only return non-deleted notes. Pass deleted:true to get trash.
     if (params?.deleted === true) {
       notes = notes.filter((n) => n.deleted === true);
     } else {
@@ -17,18 +46,28 @@ export async function getNotes(params?: {
     }
     return notes;
   }
-  // TODO: BACKEND — GET /api/notes  (default excludes deleted)
-  //                 GET /api/notes?deleted=true  (returns trash)
-  const query = new URLSearchParams(params as Record<string, string>);
-  return apiFetch<Note[]>(`/api/notes?${query}`);
+
+  // Trash is not supported in the backend yet — return empty for deleted view
+  if (params?.deleted === true) return [];
+
+  const response = await apiFetch<FolderListResponse>("/folders");
+  return response.folders.map(folderToNote);
 }
 
+// ── getNote → GET /folders/:name ─────────────────────────────────────────────
 export async function getNote(id: string): Promise<Note | undefined> {
   if (USE_MOCKS) return mockNotes.find((n) => n.id === id);
-  // TODO: BACKEND — GET /api/notes/:id
-  return apiFetch<Note>(`/api/notes/${id}`);
+
+  try {
+    const folder = await apiFetch<BackendFolder>(`/folders/${id}`);
+    return folderToNote(folder);
+  } catch {
+    return undefined;
+  }
 }
 
+// ── createNote — not directly supported; ingest creates folders automatically ─
+// Use upload.ts → ingestText() / uploadFile() / scrapeUrl() to add content.
 export async function createNote(body: {
   content?: string;
   title?: string;
@@ -47,13 +86,23 @@ export async function createNote(body: {
     mockNotes.unshift(note);
     return note;
   }
-  // TODO: BACKEND — POST /api/notes
-  return apiFetch<Note>("/api/notes", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+
+  // Backend creates folders automatically via /ingest — no direct create endpoint.
+  // For now fall back to mock behaviour so the UI doesn't break.
+  const note: Note = {
+    id: `note-${Date.now()}`,
+    title: body.title ?? "Untitled Note",
+    content: body.content ?? "",
+    attachments: [],
+    tags: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    thumbnail_color: "from-purple-400/30 to-violet-200/20",
+  };
+  return note;
 }
 
+// ── updateNote — not yet supported in backend ─────────────────────────────────
 export async function updateNote(
   id: string,
   body: Partial<Note>
@@ -70,45 +119,39 @@ export async function updateNote(
     }
     throw new Error("Note not found");
   }
-  // TODO: BACKEND — PATCH /api/notes/:id
-  return apiFetch<Note>(`/api/notes/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(body),
-  });
+  // TODO: backend folder rename/edit endpoint not yet implemented
+  throw new Error("updateNote not yet supported in backend");
 }
 
+// ── deleteNote → DELETE /folders/:name ───────────────────────────────────────
 export async function deleteNote(id: string): Promise<void> {
   if (USE_MOCKS) {
     const idx = mockNotes.findIndex((n) => n.id === id);
     if (idx !== -1) mockNotes[idx].deleted = true;
     return;
   }
-  // TODO: BACKEND — PATCH /api/notes/:id { deleted: true }  (soft-delete to Trash)
-  return apiFetch<void>(`/api/notes/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ deleted: true }),
-  });
+
+  // Backend DELETE is permanent — no soft-delete/trash support yet
+  await apiFetch<void>(`/folders/${id}`, { method: "DELETE" });
 }
 
+// ── restoreNote — no trash in backend yet ────────────────────────────────────
 export async function restoreNote(id: string): Promise<void> {
   if (USE_MOCKS) {
     const idx = mockNotes.findIndex((n) => n.id === id);
     if (idx !== -1) mockNotes[idx].deleted = false;
     return;
   }
-  // TODO: BACKEND — PATCH /api/notes/:id { deleted: false }  (restore from Trash)
-  return apiFetch<void>(`/api/notes/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ deleted: false }),
-  });
+  // Not supported yet
 }
 
+// ── permanentDeleteNote → DELETE /folders/:name ───────────────────────────────
 export async function permanentDeleteNote(id: string): Promise<void> {
   if (USE_MOCKS) {
     const idx = mockNotes.findIndex((n) => n.id === id);
     if (idx !== -1) mockNotes.splice(idx, 1);
     return;
   }
-  // TODO: BACKEND — DELETE /api/notes/:id  (permanent, removes from DB and storage)
-  return apiFetch<void>(`/api/notes/${id}`, { method: "DELETE" });
+
+  await apiFetch<void>(`/folders/${id}`, { method: "DELETE" });
 }

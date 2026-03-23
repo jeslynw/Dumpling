@@ -1,7 +1,7 @@
 OPENAI_LLM_MODEL = "gpt-4o-mini"
 OPENAI_EMBED_MODEL = "text-embedding-3-small"
 OPENAI_VISION_MODEL = "gpt-4o-mini"
-RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"  # local HuggingFace
+RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 CHUNK_SIZE = 3000
 CHUNK_OVERLAP = 200

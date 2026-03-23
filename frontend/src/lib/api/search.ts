@@ -6,37 +6,31 @@ const MOCK_RESPONSES: Record<string, string> = {
     "Based on your notes, I found relevant information across multiple documents. Your Tokyo trip includes a flight on NH008 departing Nov 6 at 17:05, hotel at Park Hyatt Tokyo (check-in Nov 1), and 12 restaurant bookmarks including Sukiyabashi Jiro in Ginza.",
 };
 
+// ── queryRAG → POST /chat ─────────────────────────────────────────────────────
 export async function queryRAG(body: {
   query: string;
   context_note_ids?: string[];
 }): Promise<SearchResult> {
   if (USE_MOCKS) {
-    // Simulate network delay
     await new Promise((r) => setTimeout(r, 1200));
     const q = body.query.toLowerCase();
     let answer = MOCK_RESPONSES.default;
-    if (q.includes("hotel") || q.includes("booking")) answer = MOCK_RESPONSES.hotel;
-    else if (q.includes("flight") || q.includes("plane")) answer = MOCK_RESPONSES.flight;
+    if (q.includes("hotel") || q.includes("booking")) answer = MOCK_RESPONSES.hotel ?? MOCK_RESPONSES.default;
+    else if (q.includes("flight") || q.includes("plane")) answer = MOCK_RESPONSES.flight ?? MOCK_RESPONSES.default;
     else if (q.includes("restaurant") || q.includes("food") || q.includes("eat"))
-      answer = MOCK_RESPONSES.restaurant;
+      answer = MOCK_RESPONSES.restaurant ?? MOCK_RESPONSES.default;
     return { answer, sources: [] };
   }
-  // TODO: BACKEND — POST /api/search
-  // Body: { query: string, context_note_ids?: string[] }
-  // Returns: { answer: string, sources: Source[] }
-  return apiFetch<SearchResult>("/api/search", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
 
-// export async function getSuggestions(noteId?: string): Promise<string[]> {
-//   if (USE_MOCKS) {
-//     return [
-//       "Summarize hotel info",
-//     ];
-//   }
-//   // TODO: BACKEND — GET /api/search/suggestions?note_id=:id
-//   const query = noteId ? `?note_id=${noteId}` : "";
-//   return apiFetch<string[]>(`/api/search/suggestions${query}`);
-// }
+  // POST /chat — RAG chatbot agent
+  // The agent internally: picks folders → Hybrid RAG + CRAG → synthesizes answer
+  const response = await apiFetch<{ answer: string }>("/chat", {
+    method: "POST",
+    body: JSON.stringify({ question: body.query }),
+  });
+
+  return {
+    answer: response.answer,
+    sources: [], // TODO: parse [WEB SEARCH RESULT] tags from answer to populate sources
+  };
+}

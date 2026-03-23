@@ -28,7 +28,7 @@ from app.schemas.schema import (
 router = APIRouter(prefix="/ingest", tags=["Ingestion"])
 
 
-# ── POST /ingest/text ─────────────────────────────────────────────────────────
+# POST /ingest/text
 @router.post("/text", response_model=IngestResponse, summary="Ingest raw text / URLs")
 def ingest_text(body: IngestTextRequest):
     """
@@ -56,7 +56,7 @@ def ingest_text(body: IngestTextRequest):
     return IngestResponse(results=results, collections=get_existing_collections())
 
 
-# ── POST /ingest/file ─────────────────────────────────────────────────────────
+# POST /ingest/file
 @router.post("/file", response_model=IngestItemResult, summary="Upload and ingest a single file")
 async def ingest_file(file: UploadFile = File(...)):
     """
@@ -94,7 +94,7 @@ async def ingest_file(file: UploadFile = File(...)):
         os.unlink(tmp_path)
 
 
-# ── POST /ingest/confirm ──────────────────────────────────────────────────────
+# POST /ingest/confirm
 @router.post("/confirm", response_model=ConfirmFolderResponse, summary="Confirm or rename a folder")
 def confirm_folder(body: ConfirmFolderRequest):
     """

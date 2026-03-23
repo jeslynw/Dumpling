@@ -5,7 +5,6 @@ Qdrant client + all retrieval logic:
   - grade_chunks, broaden_query, increase_k_broaden_query, tavily_search
   - retrieve_with_crag   (the full CRAG fallback chain)
 """
-import re
 
 import qdrant_client
 from langchain_core.documents import Document
@@ -27,12 +26,11 @@ from app.core.constants import (
 )
 from app.services.openai import openai_embeddings, llm, cross_encoder
 
-# ── Qdrant client (local on-disk) ─────────────────────────────────────────────
+# Qdrant client
 qdrant = qdrant_client.QdrantClient(path=QDRANT_PATH)
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
+# Helpers
 def sanitize_name(name: str) -> str:
     """Qdrant collection names: lowercase alphanumeric + underscores only."""
     return "".join(c for c in name.lower() if c.isalnum() or c == "_")
@@ -87,8 +85,7 @@ def get_all_documents_from_qdrant(collection_name: str) -> list[Document]:
     return all_docs
 
 
-# ── Hybrid RAG ────────────────────────────────────────────────────────────────
-
+# Hybrid RAG
 def get_hybrid_retriever(collection_name: str, top_k: int = RAG_TOP_K, file_id: str | None = None):
     """
     Dense (Qdrant) + BM25 fused with RRF, then re-ranked by cross-encoder.
@@ -119,8 +116,7 @@ def get_hybrid_retriever(collection_name: str, top_k: int = RAG_TOP_K, file_id: 
     return ContextualCompressionRetriever(base_compressor=reranker, base_retriever=ensemble)
 
 
-# ── CRAG helpers ──────────────────────────────────────────────────────────────
-
+# CRAG helpers
 _GRADER_PROMPT = ChatPromptTemplate.from_messages([
     ("system", """You are a grader assessing whether a retrieved document chunk is relevant to the user's question.
 Return ONLY a JSON object: {{"relevant": true or false, "reason": "brief reason"}}
@@ -165,7 +161,7 @@ def increase_k_broaden_query(
     broader: str, collection_name: str, file_id: str | None = None
 ) -> list[Document]:
     """Same broadened query but casts a wider net (RAG_TOP_K_LARGE) with a fresh retriever."""
-    print(f"  🔍 Retrying with larger top_k={RAG_TOP_K_LARGE}...")
+    print(f"Retrying with larger top_k={RAG_TOP_K_LARGE}...")
     retriever = get_hybrid_retriever(collection_name, top_k=RAG_TOP_K_LARGE, file_id=file_id)
     return retriever.invoke(broader)
 
@@ -182,10 +178,10 @@ def tavily_search(question: str) -> list[Document]:
                 page_content=content,
                 metadata={"source": r.get("url", "web"), "type": "web_search"},
             ))
-        print(f"🌐 Tavily found {len(web_docs)} web results")
+        print(f"Tavily found {len(web_docs)} web results")
         return web_docs
     except Exception as e:
-        print(f"❌ Tavily search failed: {e}")
+        print(f"Tavily search failed: {e}")
         return []
 
 
@@ -207,22 +203,22 @@ def retrieve_with_crag(
 
     docs = retriever.invoke(question)
     if grade_chunks(question, docs):
-        print(f"{prefix}✅ Chunks are relevant")
+        print(f"{prefix} Chunks are relevant")
         return docs
 
-    print(f"{prefix}⚠️ Chunks not relevant, broadening query...")
+    print(f"{prefix} Chunks not relevant, broadening query...")
     broader = broaden_query(question)
     docs = retriever.invoke(broader)
     if grade_chunks(question, docs):
-        print(f"{prefix}✅ Broadened query found relevant chunks")
+        print(f"{prefix} Broadened query found relevant chunks")
         return docs
 
-    print(f"{prefix}⚠️ Still not relevant, increasing top_k...")
+    print(f"{prefix} Still not relevant, increasing top_k...")
     if collection_name:
         docs = increase_k_broaden_query(broader, collection_name, file_id)
         if grade_chunks(question, docs):
-            print(f"{prefix}✅ Larger top_k found relevant chunks")
+            print(f"{prefix} Larger top_k found relevant chunks")
             return docs
 
-    print(f"{prefix}🌐 Falling back to web search...")
+    print(f"{prefix} Falling back to web search...")
     return tavily_search(question)

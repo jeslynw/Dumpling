@@ -15,14 +15,12 @@ from app.services.qdrant import qdrant, sanitize_name
 @tool
 def find_or_suggest_folder(content_previews: list[str], exclude_folder: str = "") -> str:
     """
-    Decide which folder a batch of items belongs to — existing or new.
+    Decide which folder this content belongs to — existing or new.
     ALWAYS call this first.
     Input: list of content_previews, each as 'Title: X\nSummary: Y'
-        - Matches based primarily on folder DESCRIPTION, secondarily on title.
-        - Avoids creating near-duplicate folders (e.g. won't create 'duck_pond' if 'wildlife_ducks' exists).
-        - If confidence < 0.5, suggests a new sanitized folder name.
-    Returns a JSON object keyed by item index:
-      {"0": {"folder_name": "...", "is_new": bool, "confidence": float (0.0-1.0), "reason": "..."}, ...}
+    - Matches based primarily on folder DESCRIPTION, secondarily on title.
+    - Avoids creating near-duplicate folders (e.g. won't create 'duck_pond' if 'wildlife_ducks' exists).
+    Returns one line: folder_name | is_new (true/false) | confidence (0.0-1.0) | reason
     """
     registry = load_registry()
 
@@ -60,10 +58,16 @@ def find_or_suggest_folder(content_previews: list[str], exclude_folder: str = ""
     3. DO NOT group items by file format. NEVER use generic names like 'weblinks', 'images', 'misc'.
     4. Match based PRIMARILY on description, secondarily on title, partial keyword matches (e.g. "food") are NOT enough. The overall subject must match.
     5. Avoid near-duplicate folders (e.g. don't create "duck_pond" if "wildlife_ducks" exists).
-    6. Only suggest a new folder if nothing existing scores >= 0.5.
+    6. Only suggests a new sanitized folder name if confidence < 0.5.
     7. New folder names: lowercase, alphanumeric + underscores only, max 2 words.
     8. NEVER use prefixes like 'content_', 'data_', 'file_', 'info_'.
     9. ALWAYS prefer broadening an existing folder over creating a near-duplicate. "NEVER create 'mathematics' if 'algebra' already exists — they're the same domain.\n""
+
+    CRITICAL NAMING RULE FOR NEW FOLDERS:
+    - Maximum 2 words total. 
+    - "NEVER use generic prefixes like 'content_', 'data_', 'file_', 'info_' in folder names.\n"
+    - "GOOD: 'llm_training', 'generative_ai', 'bali_travel'\n"
+    - "BAD: 'content_training_llms', 'content_creation_ai'\n"
 
     CONFIDENCE GUIDE:
     0.9-1.0 = clearly fits
