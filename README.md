@@ -1,11 +1,11 @@
-# 🥟 Dumpling | Smart Notebook (To be updated)
+# 🥟 Dumpling | Smart Notebook
 
 > An AI-powered smart notebook that automatically organizes, categorizes, and retrieves unstructured content using Agentic AI, LLMs, and Retrieval-Augmented Generation (RAG).
 
 ---
 
 ## 🚀 Overview
-Managing notes and saved content is messy — URLs, PDFs, images, and plain text scattered across topics with no structure. Dumpling solves this by automatically ingesting, categorizing, and making all your content queryable.
+Managing notes and saved content is messy, URLs, PDFs, images, and plain text scattered across topics with no structure. Dumpling solves this by automatically ingesting, categorizing, and making all your content queryable.
 
 **The problem:**
 - Unstructured, messy, and scattered across topics  
@@ -46,40 +46,20 @@ Answer user query uses three tools:
 - `search_source`: Search within a specific source (URL or filename) inside a folder.
   
 Answers are retrieved by a Hybrid RAG:
-- **Dense retrieval** — Qdrant semantic search (OpenAI `text-embedding-3-small`)
-- **Sparse retrieval** — BM25 keyword search
-- **Fusion** — Reciprocal Rank Fusion (RRF)
-- **Reranking** — CrossEncoder (`ms-marco-MiniLM-L-6-v2`)
-- **CRAG fallback** — if retrieved chunks are not relevant, the agent broadens the query, retries with a larger top-K, and finally falls back to Tavily web search
+- **Dense retrieval**: Qdrant semantic search (OpenAI `text-embedding-3-small`)
+- **Sparse retrieval**: BM25 keyword search
+- **Fusion**: Reciprocal Rank Fusion (RRF)
+- **Reranking**: CrossEncoder (`ms-marco-MiniLM-L-6-v2`)
+- **CRAG fallback**: if retrieved chunks are not relevant, the agent broadens the query, retries with a larger top-K, and finally falls back to Tavily web search
 
 ### Critic-Eval Agent
-Wraps the RAG Chatbot Agent and acts as a quality gate. Evaluates every notebook-derived answer for hallucination using LLM-as-a-judge. If the faithfulness score falls below the threshold, it regenerates the answer with a refined prompt and re-evaluates, up to a configurable maximum number of retries. Answers sourced from Tavily web search bypass the critic.
-Uses three tools:
+Wraps the RAG Chatbot Agent and acts as a quality gate. Evaluates every derived answer for hallucination using LLM-as-a-judge. If the faithfulness score falls below the threshold, it regenerates the answer with a refined prompt and re-evaluates, up to a configurable maximum number of retries. Answers sourced from Tavily web search bypass the critic.
+Uses these tools:
 `get_full_chunks_from_qdrant`: Retrieve the full chunks from Qdrant for the searched folders as the grounding truth context for judge evaluation.
 `judge_answer`: Evaluate whether the generated answer is grounded
 `regenerate_answer`: Re-runs the RAG Chatbot Agent with a refined prompt when score falls below threshold
 
 ---
-
-## 🔁 Pipeline Flow
-```
-User input (text / URL / file)
-    ↓
-parse_user_input()       — LLM separates into [{content, type_hint}]
-    ↓
-prepare_input()          — reads local files, passes URLs/text unchanged
-    ↓
-Ingestion Agent          — extracts text → contextual chunks → (docs, title, summary)
-    ↓
-Categorizer Agent        — assigns folder → stores in Qdrant → updates registry
-    ↓
-Query time:
-User question
-    ↓
-RAG Chatbot Agent        — pick folders → hybrid RAG → CRAG fallback → draft answer
-    ↓
-Critic-Eval Agent        — judge faithfulness → regenerate if needed → final answer
-```
 
 ## 🏗 Tech Stack
 
@@ -98,12 +78,15 @@ Critic-Eval Agent        — judge faithfulness → regenerate if needed → fin
 | Component | Model / Library |
 |---|---|
 | LLM (main) | OpenAI `gpt-4o-mini` |
-| LLM (chatbot) | Groq `llama-3.1-8b-instant` |
-| Embeddings | OpenAI `text-embedding-3-small` (1536-dim) |
-| Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` (local) |
+| LLM for alt flow 2 (chatbot) | Groq `llama-3.3-70b-versatile` |
+| Embeddings | OpenAI `text-embedding-3-small` |
+| Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
 | Document parsing | Docling (PDF, DOCX, PPTX, HTML, images, OCR) |
-| Web search fallback | Tavily |
-| RAG framework | LangChain |
+| Web search | Tavily |
+| RAG framework | LangChain / LangGraph |
+| Vector Database | Qdrant |
+| Evaluation | RAGAS |
+
 
 ---
 
@@ -130,7 +113,6 @@ Critic-Eval Agent        — judge faithfulness → regenerate if needed → fin
 
 Pages live in `src/` as named components (`HomePage.tsx`, `ChatPage.tsx`, `NewNotePage.tsx`, `EditNotePage.tsx`, `TrashPage.tsx`). The `src/app/` directories contain one-line re-export wrappers required by Next.js App Router.
 
-
 **Start frontend**: ```npm run dev```
 
 
@@ -143,6 +125,4 @@ Pages live in `src/` as named components (`HomePage.tsx`, `ChatPage.tsx`, `NewNo
 
 - **Install dependencies**: ```pip install -r requirements.txt```
 
-**Run backend**: ``` ```
-
-
+**Run backend**: ```uvicorn main:app --reload --port 8000```
