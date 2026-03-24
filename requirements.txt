@@ -46,6 +46,7 @@ langchain
 langchain-core
 langchain-openai
 langchain-community
+langchain-qdrant
 langgraph
 
 # Vector DB
