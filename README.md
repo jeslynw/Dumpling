@@ -41,24 +41,7 @@ Managing notes and saved content is messy, URLs, PDFs, images, and plain text sc
 - Tavily API key  
 ---
 
-### 1. Frontend Setup
-
-**Install Next.js**: ```npx create-next-app frontend```
-
-**Inside the frontend folder, install Tiptap**: ```npx @tiptap/cli@latest add simple-editor```
-
-**Add the following imports in `./src/app/globals.css`**:
-- @import '../styles/_variables.scss';
-- @import '../styles/_keyframe-animations.scss';
-
-**Copy environment variables**: ```cp .env.example .env.local```
-
-Pages live in `src/` as named components (`HomePage.tsx`, `ChatPage.tsx`, `NewNotePage.tsx`, `EditNotePage.tsx`, `TrashPage.tsx`). The `src/app/` directories contain one-line re-export wrappers required by Next.js App Router.
-
-**Start frontend**: ```npm run dev```
-
-
-### 2. Backend Setup
+### 1. Backend Setup
 
 #### Environment Setup
 - **Create env**: ```conda create -p ./env python=3.13.5 -y```
@@ -68,3 +51,8 @@ Pages live in `src/` as named components (`HomePage.tsx`, `ChatPage.tsx`, `NewNo
 - **Install dependencies**: ```pip install -r requirements.txt```
 
 **Run backend**: ```uvicorn main:app --reload --port 8000```
+
+
+### 2. Frontend
+
+**Start frontend**: ```npm run dev```
