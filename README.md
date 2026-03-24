@@ -41,18 +41,15 @@ Managing notes and saved content is messy, URLs, PDFs, images, and plain text sc
 - Tavily API key  
 ---
 
-### 1. Backend Setup
-
-#### Environment Setup
+### Environment Setup
 - **Create env**: ```conda create -p ./env python=3.13.5 -y```
 
 - **Activate env**: ```conda activate ./env```
 
 - **Install dependencies**: ```pip install -r requirements.txt```
 
+---
+
 **Run backend**: ```uvicorn main:app --reload --port 8000```
-
-
-### 2. Frontend
 
 **Start frontend**: ```npm run dev```
