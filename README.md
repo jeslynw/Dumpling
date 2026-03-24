@@ -85,8 +85,6 @@ Uses these tools:
 | Web search | Tavily |
 | RAG framework | LangChain / LangGraph |
 | Vector Database | Qdrant |
-| Evaluation | RAGAS |
-
 
 ---
 
