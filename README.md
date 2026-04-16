@@ -5,6 +5,9 @@
 ## 🚀 Overview
 Managing notes and saved content is messy, URLs, PDFs, images, and plain text scattered across topics with no structure. Dumpling solves this by automatically ingesting, categorizing, and making all your content queryable.
 
+## Architecture Flow
+<img width="2073" height="1085" alt="agentic_flow1" src="https://github.com/user-attachments/assets/95d5fb0a-a09f-4849-be2c-b9b4ef60a987" />
+
 ## 🏗 Tech Stack
 
 ### Frontend
