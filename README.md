@@ -56,7 +56,7 @@ Managing notes and saved content is messy, URLs, PDFs, images, and plain text sc
 
 ---
 
-## How Dumpling looks like
+## How Dumpling Looks Like
 <img width="2877" height="1699" alt="1_homepage" src="https://github.com/user-attachments/assets/dca37d35-7dbd-4093-8cf2-85e406cc5901" />
 <img width="1919" height="1124" alt="2_folder" src="https://github.com/user-attachments/assets/67f42e6e-a4b0-4711-a131-91ffda5dd944" />
 <img width="1919" height="1124" alt="3_smallbao" src="https://github.com/user-attachments/assets/76cccf9c-9faf-41b1-928c-0c0a5ba346db" /><img width="1919" height="1125" alt="4_bao" src="https://github.com/user-attachments/assets/dfe5cdc2-fdcb-4742-926b-6fd355df2246" />
